@@ -130,7 +130,9 @@ void dualise_V0_(const node_t* G_in, const uint8_t* deg, node_t* G_out , const i
     node_t* triangle_numbers = reinterpret_cast<node_t*>(sharedmem);
     node_t* cached_neighbours = triangle_numbers + N_f*MaxDegree;
     uint8_t* cached_degrees = reinterpret_cast<uint8_t*>(cached_neighbours+ N_f*MaxDegree);
-    node_t* smem = reinterpret_cast<node_t*>(cached_neighbours) + N_f*(MaxDegree + 1);
+    node_t* smem = reinterpret_cast<node_t*>(cached_neighbours) + N_f*(MaxDegree + 1) ;
+    //Align smem to 32 bytes
+    smem = (node_t*)(((uintptr_t)smem + 31) & ~31);
     reinterpret_cast<float*>(smem)[threadIdx.x] = 0;
     for (int isomer_idx = blockIdx.x; isomer_idx < N_graphs; isomer_idx += gridDim.x ){
     __syncthreads();
@@ -198,6 +200,8 @@ void dualise_V1_(const node_t* G_in, const uint8_t* deg, node_t* G_out , const i
     node_t* cached_neighbours = triangle_numbers + N_f*MaxDegree;
     uint8_t* cached_degrees = reinterpret_cast<uint8_t*>(cached_neighbours+ N_f*MaxDegree);
     node_t* smem = reinterpret_cast<node_t*>(cached_neighbours) + N_f*(MaxDegree + 1);
+    //Align smem to 32 bytes
+    smem = (node_t*)(((uintptr_t)smem + 31) & ~31);
     reinterpret_cast<float*>(smem)[threadIdx.x] = 0;
     for (int isomer_idx = blockIdx.x; isomer_idx < N_graphs; isomer_idx += gridDim.x ){
     __syncthreads();
