@@ -41,10 +41,13 @@ int main(int argc, char** argv) {
     int N = argc > 1 ? std::stoi(argv[1]) : 200;
     int N_graphs = argc > 2 ? std::stoi(argv[2]) : 1000;
     int N_runs = argc > 3 ? std::stoi(argv[3]) : 1;
-    int version = argc > 4 ? std::stoi(argv[4]) : 0;
-    int N_warmup = argc > 5 ? std::stoi(argv[5]) : 1;
+    int N_warmup = argc > 4 ? std::stoi(argv[4]) : 1;
+    int version = argc > 5 ? std::stoi(argv[5]) : 0;
     int N_d = LaunchCtx::get_device_count();
-
+    if(N==22 || N%2==1 || N<20 || N>200){
+        std::cout << "N must be even and between 20 and 200 and not equal to 22." << std::endl;
+        return 1;
+    }
 
     int Nf = N/2 + 2;
     const std::string path = "../isomerspace_samples/dual_layout_" + std::to_string(N) + "_seed_42";
@@ -59,7 +62,7 @@ int main(int argc, char** argv) {
     std::vector<CuArray<uint8_t>> in_degrees(N_d); for(int i = 0; i < N_d; i++) {in_degrees[i]=CuArray<uint8_t>((N_graphs/N_d + N_graphs%N_d)*Nf);}
     std::vector<CuArray<uint16_t>> out_graphs(N_d); for(int i = 0; i < N_d; i++) {out_graphs[i]=CuArray<uint16_t>((N_graphs/N_d + N_graphs%N_d)*N*3);}
     std::vector<int> counts(N_d, N_graphs/N_d); counts[N_d-1] += N_graphs%N_d;
-    for(int dev_id = 0; dev_id < N_d; dev_id++) {                  //Copy the first N_graphs samples into the batch.
+    for(int dev_id = 0; dev_id < N_d; dev_id++) { //Copy the samples to the device.
         int idx = 0;
         for(int i = 0; i < counts[dev_id]; i++) {
         for(int j = 0; j < Nf; j++) {
@@ -119,10 +122,10 @@ int main(int argc, char** argv) {
             }
         }
     }
-    
 
-    std::cout << "Time per Graph: " << mean(times)/N_graphs << "+/- " << stddev(times)/N_graphs << " ns" << std::endl;
-    std::cout << "Timing Difference: " << mean(tdiffs)/N_graphs << "+/- " << stddev(tdiffs)/N_graphs << " ns" << std::endl;
+
+    std::cout << "N\t | Time\t | Time SD\t | Time Diff\t | Time Diff SD" << std::endl;
+    std::cout << N << ", " << mean(times)/N_graphs << ", " << stddev(times)/N_graphs << ", " <<  mean(tdiffs)/N_graphs << ", " << stddev(tdiffs)/N_graphs << std::endl;
     
     return 0;
 }
