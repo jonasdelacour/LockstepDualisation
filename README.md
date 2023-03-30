@@ -7,6 +7,7 @@ Computing, Networking, Storage, and Analysis
 * CMake 3.1 or higher
 * C++ compiler with C++17 support
 * Nvidia CUDA Toolkit 11.7 or higher
+* Nvidia GPU with compute capability 7.0 or higher
 
 ### Build
 ```mkdir build && cd build```
