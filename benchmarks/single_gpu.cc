@@ -39,8 +39,8 @@ T stddev(const std::vector<T>& data)
 int main(int argc, char** argv) {
     int N = argc > 1 ? std::stoi(argv[1]) : 200;
     int N_graphs = argc > 2 ? std::stoi(argv[2]) : 1000;
-    int N_runs = argc > 3 ? std::stoi(argv[3]) : 1;
-    int N_warmup = argc > 4 ? std::stoi(argv[4]) : 1;
+    int N_runs = argc > 3 ? std::stoi(argv[3]) : 100;
+    int N_warmup = argc > 4 ? std::stoi(argv[4]) : 5;
     int version = argc > 5 ? std::stoi(argv[5]) : 0;
 
     int Nf = N/2 + 2;
