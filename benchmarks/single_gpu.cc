@@ -42,7 +42,10 @@ int main(int argc, char** argv) {
     int N_runs = argc > 3 ? std::stoi(argv[3]) : 100;
     int N_warmup = argc > 4 ? std::stoi(argv[4]) : 5;
     int version = argc > 5 ? std::stoi(argv[5]) : 0;
-
+    if(N==22 || N%2==1 || N<20 || N>200){
+        std::cout << "N must be even and between 20 and 200 and not equal to 22." << std::endl;
+        return 1;
+    }
     int Nf = N/2 + 2;
     const std::string path = "../isomerspace_samples/dual_layout_" + std::to_string(N) + "_seed_42";
     std::ifstream samples(path, std::ios::binary);        //Open the file containing the samples.
@@ -72,7 +75,7 @@ int main(int argc, char** argv) {
     std::vector<double> times(N_runs); //Times in nanoseconds.
     std::vector<double> tdiffs(N_runs); //Timing differences in nanoseconds.
 
-    for (size_t i = 0; i < N_runs + 1; i++)
+    for (size_t i = 0; i < (N_runs + N_warmup); i++)
     {
         auto start = steady_clock::now();
         ctx.start_timer();
@@ -87,16 +90,13 @@ int main(int argc, char** argv) {
         default:
             break;
         }
-        if(i > 0) times[i-1] = duration<double,std::nano>(ctx.stop_timer()).count();
+        if(i >= N_warmup) times[i-N_warmup] = duration<double,std::nano>(ctx.stop_timer()).count();
         auto end = steady_clock::now(); 
-        if(i > 0) tdiffs[i-1] = std::abs(duration<double,std::nano>(end - start).count()/N_graphs - duration<double,std::nano>(times[i-1]).count()/N_graphs);
+        if(i >= N_warmup) tdiffs[i-N_warmup] = std::abs(duration<double,std::nano>(end - start).count()/N_graphs - duration<double,std::nano>(times[i-N_warmup]).count()/N_graphs);
     }
     
-    
-    std::cout << "Time per Graph: " << mean(times)/N_graphs << "+/- " << stddev(times)/N_graphs << " ns" << std::endl;
-    std::cout << "Timing Difference: " << mean(tdiffs)/N_graphs << "+/- " << stddev(tdiffs)/N_graphs << " ns" << std::endl;
-
-
+    std::cout << "N\t | Time\t | Time SD\t | Time Diff\t | Time Diff SD" << std::endl;
+    std::cout << N << ", " << mean(times)/N_graphs << ", " << stddev(times)/N_graphs << ", " <<  mean(tdiffs)/N_graphs << ", " << stddev(tdiffs)/N_graphs << std::endl;
     
     return 0;
 }
