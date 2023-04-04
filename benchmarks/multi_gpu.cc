@@ -1,4 +1,5 @@
 #include "../include/dual.h"
+#include "../include/util.h"
 #include "fstream"
 #include "iostream"
 #include "../include/cu_array.h"
@@ -10,32 +11,6 @@
 #include "algorithm"
 using namespace std::chrono_literals;
 using namespace std::chrono;
-
-template <typename T>
-T mean(std::vector<T> v) {
-    T sum = 0;
-    return std::reduce(v.begin(), v.end(), sum) / v.size();
-}
-
-template<typename T>
-T stddev(const std::vector<T>& data)
-{
-    // Calculate the mean
-    T sum = std::reduce(data.begin(), data.end(), T(0));
-    T mean = sum / data.size();
-
-    // Calculate the sum of squared differences from the mean
-    T sum_of_squares = 0.0;
-    for (const T& value : data)
-    {
-        T diff = value - mean;
-        sum_of_squares += diff * diff;
-    }
-
-    // Calculate the variance and return the square root
-    T variance = sum_of_squares / (data.size() - 1);
-    return std::sqrt(variance);
-}
 
 int main(int argc, char** argv) {
     int N = argc > 1 ? std::stoi(argv[1]) : 200;
@@ -50,30 +25,12 @@ int main(int argc, char** argv) {
     }
 
     int Nf = N/2 + 2;
-    const std::string path = "../isomerspace_samples/dual_layout_" + std::to_string(N) + "_seed_42";
-    std::ifstream samples(path, std::ios::binary);        //Open the file containing the samples.
-    int fsize = std::filesystem::file_size(path);         //Get the size of the file in bytes.
-    int n_samples = fsize / (Nf * 6 * sizeof(uint16_t));   //All the graphs are fullerene graphs stored in 16bit unsigned integers.
-
-    std::vector<uint16_t> in_buffer(n_samples * Nf * 6);   //Allocate a buffer to store all the samples.
-    samples.read((char*)in_buffer.data(), n_samples*Nf*6*sizeof(uint16_t));         //Read all the samples into the buffer.
 
     std::vector<CuArray<uint16_t>> in_graphs(N_d); for(int i = 0; i < N_d; i++) {in_graphs[i]=CuArray<uint16_t>((N_graphs/N_d + N_graphs%N_d)*Nf*6);}
     std::vector<CuArray<uint8_t>> in_degrees(N_d); for(int i = 0; i < N_d; i++) {in_degrees[i]=CuArray<uint8_t>((N_graphs/N_d + N_graphs%N_d)*Nf);}
     std::vector<CuArray<uint16_t>> out_graphs(N_d); for(int i = 0; i < N_d; i++) {out_graphs[i]=CuArray<uint16_t>((N_graphs/N_d + N_graphs%N_d)*N*3);}
-    std::vector<int> counts(N_d, N_graphs/N_d); counts[N_d-1] += N_graphs%N_d;
-    for(int dev_id = 0; dev_id < N_d; dev_id++) { //Copy the samples to the device.
-        int idx = 0;
-        for(int i = 0; i < counts[dev_id]; i++) {
-        for(int j = 0; j < Nf; j++) {
-        for(int k = 0; k < 6; k++) {
-            in_graphs[dev_id][i*Nf*6 + j*6 + k] = in_buffer[(i%n_samples)*Nf*6 + j*6 + k];
-            if(k==5) in_degrees[dev_id][i*Nf + j] = in_buffer[(i%n_samples)*Nf*6 + j*6 + k] == UINT16_MAX ? 5 : 6;
-        }
-        }
-        }
-    }
 
+    for(int i = 0; i < N_d; i++) fill(in_graphs[i], in_degrees[i], Nf, N_graphs/N_d + N_graphs%N_d);
     
     std::vector<LaunchCtx> ctxs(N_d); for(int i = 0; i < N_d; i++) {ctxs[i] = LaunchCtx(i);}
 
