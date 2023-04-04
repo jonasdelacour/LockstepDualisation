@@ -3,14 +3,16 @@ typedef unsigned short node_t;
 #include "launch_ctx.h"
 #include "cu_array.h"
 #include <vector>
+
+//TODO: add versions which don't use CuArray, LaunchCtx, LaunchPolicy, but instead allocates memory itself, copies data to GPU, runs kernel, copies data back, and frees memory
 template <int MaxDegree> 
 void dualise_V0(const node_t* G_in, const uint8_t* degrees, node_t* G_out , const int Nf,  const int N_graphs);
 
 template <int MaxDegree>
-void dualise_V0(const CuArray<node_t>& G_in, const CuArray<uint8_t>& degrees, CuArray<node_t>& G_out, const int Nf, const int N_graphs, const LaunchCtx& ctx = LaunchCtx(), const LaunchPolicy policy = LaunchPolicy::SYNC);
+void dualise_V1(const node_t* G_in, const uint8_t* degrees, node_t* G_out , const int Nf,  const int N_graphs);
 
 template <int MaxDegree>
-void dualise_V1(const node_t* G_in, const uint8_t* degrees, node_t* G_out , const int Nf,  const int N_graphs);
+void dualise_V0(const CuArray<node_t>& G_in, const CuArray<uint8_t>& degrees, CuArray<node_t>& G_out, const int Nf, const int N_graphs, const LaunchCtx& ctx = LaunchCtx(), const LaunchPolicy policy = LaunchPolicy::SYNC);
 
 template <int MaxDegree>
 void dualise_V1(const CuArray<node_t>& G_in, const CuArray<uint8_t>& degrees, CuArray<node_t>& G_out, const int Nf, const int N_graphs, const LaunchCtx& ctx = LaunchCtx(), const LaunchPolicy policy = LaunchPolicy::SYNC);
