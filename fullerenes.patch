@@ -67,6 +67,97 @@ index 41a3e93..72b5c30 100644
    add_subdirectory(src/cuda)
  endif()
  
+diff --git a/include/fullerenes/auxiliary.hh b/include/fullerenes/auxiliary.hh
+index 39a9c6d..f9bc456 100644
+--- a/include/fullerenes/auxiliary.hh
++++ b/include/fullerenes/auxiliary.hh
+@@ -32,15 +32,15 @@ struct edge_t : public pair<node_t,node_t> {
+     first = u;
+     second = index-u*(u-1)/2;
+   }
+-  inline size_t index() const { 
++  inline size_t index() const {
+     const node_t v = first, u = second;
+-    return u*(u-1)/2 + v; 
++    return u*(u-1)/2 + v;
+   }
+ };
+ 
+ 
+ 
+-#define insert_unique(v,x) if(std::find(v.begin(),v.end(),x) == v.end()) v.push_back(x); 
++#define insert_unique(v,x) if(std::find(v.begin(),v.end(),x) == v.end()) v.push_back(x);
+ 
+ template <typename S, typename T> ostream& operator<<(ostream& s, const pair<S,T>& p)
+ {
+@@ -204,15 +204,15 @@ template <typename T> vector< vector<T> > operator+(const vector< vector<T> >& x
+ 
+ template <typename T> T sum(const vector<T>& xs)
+ {
+-  T sum = 0;
+-  for(const auto &x: xs) sum += x;
+-  return sum;
++  T tmp = 0;
++  for(const auto &x: xs) tmp += x;
++  return tmp;
+ }
+ 
+ template <typename T> T mean(const vector<T>& xs)
+ {
+-  T sum = sum(xs);
+-  return sum/xs.size();
++  T tmp = sum(xs);
++  return tmp / xs.size();
+ }
+ 
+ template<typename T> void hash_combine(size_t &seed, T const &key) {
+@@ -232,7 +232,7 @@ namespace std {
+ 
+   template<typename IntType> struct hash<vector<IntType>> { // Vectors of integers smaller than 32 bit
+     size_t operator()(const vector<IntType> &v) const {
+-      return std::hash<u32string>()(u32string(v.begin(),v.end()));      
++      return std::hash<u32string>()(u32string(v.begin(),v.end()));
+     }
+   };
+ 
+@@ -248,7 +248,7 @@ public:
+   {
+     for(size_t i=0;i<xs.size();i++) unordered_map<T,size_t>::insert({xs[i],i+start});
+   }
+-  
++
+   size_t insert(const T& x){
+     typename unordered_map<T,size_t>::const_iterator it(unordered_map<T,size_t>::find(x));
+     if(it != this->end()) return it->second;
+@@ -258,8 +258,8 @@ public:
+       return nextid++;
+     }
+   }
+-  
+-  const T& invert(size_t idx) const { 
++
++  const T& invert(size_t idx) const {
+     assert(idx>=0 && idx<nextid);
+     return reverse[idx];
+   }
+@@ -300,7 +300,7 @@ public:
+   bool   empty() const { return front_index==back_index; }
+   size_t size()  const { return back_index-front_index;  }
+   void   clear() const { front_index=back_index; }
+-  
++
+   const T& front(size_t offset=0) const {
+     assert(!empty() && (offset<size()));
+     return (*this)[front_index+offset];
+@@ -309,7 +309,7 @@ public:
+     assert(!empty() && (offset<size()));
+     return (*this)[(back_index-1-offset+N)%N];
+   }
+-  
++
+   T pop_front() {
+     assert(!empty());
+     T x((*this)[front_index]);
 diff --git a/include/fullerenes/spiral.hh b/include/fullerenes/spiral.hh
 index 975ac81..4c045db 100644
 --- a/include/fullerenes/spiral.hh
