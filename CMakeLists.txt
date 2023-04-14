@@ -18,6 +18,7 @@ set(CMAKE_CXX_FLAGS "-std=c++1z -O3 -fPIC -m64 -pthread -fopenmp")
 
 include_directories(AFTER SYSTEM include)
 include_directories(${CMAKE_BINARY_DIR}/include/)
+include_directories(external/fullerenes/include)
 
 if(CMAKE_CUDA_COMPILER)
     set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-I/opt/nvidia/hpc_sdk/Linux_x86_64/2022/cuda/11.8/include/")
@@ -26,4 +27,5 @@ if(CMAKE_CUDA_COMPILER)
 endif()
 
 add_subdirectory(src/c++)
+add_subdirectory(external/fullerenes EXCLUDE_FROM_ALL)
 add_subdirectory(benchmarks)
