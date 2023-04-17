@@ -1,8 +1,8 @@
-#include "../include/dual.h"
-#include "../include/util.h"
+#include "dual.h"
+#include "util.h"
 #include "fstream"
 #include "iostream"
-#include "../include/cu_array.h"
+#include "cu_array.h"
 #include "filesystem"
 #include "vector"
 #include "chrono"
@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
     std::vector<CuArray<uint16_t>> out_graphs(N_d); for(int i = 0; i < N_d; i++) {out_graphs[i]=CuArray<uint16_t>((N_graphs/N_d + N_graphs%N_d)*N*3);}
 
     for(int i = 0; i < N_d; i++) fill(in_graphs[i], in_degrees[i], Nf, N_graphs/N_d + N_graphs%N_d);
-    
+
     std::vector<LaunchCtx> ctxs(N_d); for(int i = 0; i < N_d; i++) {ctxs[i] = LaunchCtx(i);}
 
     for(int i = 0; i < N_d; i++) {
@@ -39,15 +39,15 @@ int main(int argc, char** argv) {
         in_degrees[i].to_device(i);
         out_graphs[i].to_device(i);
     }
-    
+
     std::vector<double> times(N_runs); //Times in nanoseconds.
     std::vector<double> tdiffs(N_runs); //Timing differences in nanoseconds.
     for (size_t i = 0; i < (N_runs + N_warmup); i++)
-    {   
+    {
         if(i >= N_warmup) {
             auto start = steady_clock::now();
             for(int j = 0; j < N_d; j++) ctxs[j].start_timer();
-        
+
             switch (version)
             {
             case 0:
@@ -60,10 +60,10 @@ int main(int argc, char** argv) {
                 break;
             }
             std::vector<double> t_gpus(N_d);
-        
+
             for(int j = 0; j < N_d; j++) t_gpus[j] =  duration<double,std::nano>(ctxs[j].stop_timer()).count();
             times[i-N_warmup] = *std::max_element(t_gpus.begin(), t_gpus.end());
-            auto end = steady_clock::now(); 
+            auto end = steady_clock::now();
             tdiffs[i-N_warmup] = std::abs(duration<double,std::nano>(end - start).count()/N_graphs - duration<double,std::nano>(times[i-N_warmup]).count()/N_graphs);
         } else {
             switch (version)
@@ -83,6 +83,6 @@ int main(int argc, char** argv) {
 
     std::cout << "N\t | Time\t | Time SD\t | Time Diff\t | Time Diff SD" << std::endl;
     std::cout << N << ", " << mean(times)/N_graphs << ", " << stddev(times)/N_graphs << ", " <<  mean(tdiffs)/N_graphs << ", " << stddev(tdiffs)/N_graphs << std::endl;
-    
+
     return 0;
 }

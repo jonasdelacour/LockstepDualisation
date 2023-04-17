@@ -3815,6 +3815,25 @@ index 39c2789..1f8f48e 100644
      for(i = start_output; i <= maxnv; i++) {
          fprintf(stderr, "Num rooted maps with %d vertices: ", i);
          PRINTBIG(msgfile, numrooted[i]);
+diff --git a/src/cuda/CMakeLists.txt b/src/cuda/CMakeLists.txt
+index b2c3df3..5bfa3f1 100644
+--- a/src/cuda/CMakeLists.txt
++++ b/src/cuda/CMakeLists.txt
+@@ -4,9 +4,9 @@ set_source_files_properties(tutte.cu PROPERTIES COMPILE_FLAGS "--std c++17 --use
+ set_source_files_properties(dualise.cu PROPERTIES COMPILE_FLAGS "--std c++17 --use_fast_math --fmad true --ftz true --maxrregcount=40 -lineinfo -Xptxas -v --resource-usage -gencode arch=compute_86,code=sm_86  -I /opt/nvidia/hpc_sdk/Linux_x86_64/2022/cuda/11.8/include/")
+ set_source_files_properties(benchmark_functions.cu PROPERTIES COMPILE_FLAGS "--std c++17 --use_fast_math --fmad true --ftz true --maxrregcount=40 -lineinfo -Xptxas -v --resource-usage -gencode arch=compute_86,code=sm_86  -I /opt/nvidia/hpc_sdk/Linux_x86_64/2022/cuda/11.8/include/")
+ set_source_files_properties(isomer_queue.cu PROPERTIES COMPILE_FLAGS "--std c++17 --use_fast_math --fmad true --ftz true --maxrregcount=40 -lineinfo -Xptxas -v --resource-usage -gencode arch=compute_86,code=sm_86  -I /opt/nvidia/hpc_sdk/Linux_x86_64/2022/cuda/11.8/include/")
+-add_library(cuda_lib SHARED isomer_queue.cu cu_array.cu misc_cuda.cu forcefield.cu tutte.cu spherical_projection.cu dualise.cu benchmark_functions.cu)
+-set_property(TARGET cuda_lib PROPERTY CUDA_ARCHITECTURES "86")
+-#set_target_properties(cuda_lib PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+-#set_target_properties(cuda_lib PROPERTIES POSITION_INDEPENDENT_CODE ON)
+-#set_target_properties(cuda_lib PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
++add_library(fullerenes_cuda_lib SHARED isomer_queue.cu cu_array.cu misc_cuda.cu forcefield.cu tutte.cu spherical_projection.cu dualise.cu benchmark_functions.cu)
++set_property(TARGET fullerenes_cuda_lib PROPERTY CUDA_ARCHITECTURES "86")
++#set_target_properties(fullerenes_cuda_lib PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
++#set_target_properties(fullerenes_cuda_lib PROPERTIES POSITION_INDEPENDENT_CODE ON)
++#set_target_properties(fullerenes_cuda_lib PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
+ 
 diff --git a/src/fortran/schlegel.f b/src/fortran/schlegel.f
 index aced299..716fb30 100644
 --- a/src/fortran/schlegel.f
