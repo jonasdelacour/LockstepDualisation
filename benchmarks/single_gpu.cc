@@ -1,6 +1,6 @@
-#include "../include/dual.h"
-#include "../include/cu_array.h"
-#include "../include/util.h"
+#include "dual.h"
+#include "cu_array.h"
+#include "util.h"
 #include "fstream"
 #include "iostream"
 #include "filesystem"
@@ -8,6 +8,7 @@
 #include "chrono"
 #include "numeric"
 #include "cmath"
+#include "launch_ctx.h"
 using namespace std::chrono_literals;
 using namespace std::chrono;
 
@@ -53,12 +54,12 @@ int main(int argc, char** argv) {
             break;
         }
         if(i >= N_warmup) times[i-N_warmup] = duration<double,std::nano>(ctx.stop_timer()).count();
-        auto end = steady_clock::now(); 
+        auto end = steady_clock::now();
         if(i >= N_warmup) tdiffs[i-N_warmup] = std::abs(duration<double,std::nano>(end - start).count()/N_graphs - duration<double,std::nano>(times[i-N_warmup]).count()/N_graphs);
     }
-    
+
     std::cout << "N\t | Time\t | Time SD\t | Time Diff\t | Time Diff SD" << std::endl;
     std::cout << N << ", " << mean(times)/N_graphs << ", " << stddev(times)/N_graphs << ", " <<  mean(tdiffs)/N_graphs << ", " << stddev(tdiffs)/N_graphs << std::endl;
-    
+
     return 0;
 }
