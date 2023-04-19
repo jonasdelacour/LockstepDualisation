@@ -80,8 +80,8 @@ int main(int argc, char** argv) {
     FullereneDual G;
     G.neighbours = neighbours_t(Nf, std::vector<node_t>(6));
     G.N = Nf;
-
-    auto path = "../isomerspace_samples/dual_layout_" + to_string(N) +
+    std::filesystem::path p = std::filesystem::current_path();
+    auto path = p.string() +"/isomerspace_samples/dual_layout_" + to_string(N) +
         "_seed_42";
     ifstream isomer_sample(path,std::ios::binary);
     auto fsize = std::filesystem::file_size(path);
