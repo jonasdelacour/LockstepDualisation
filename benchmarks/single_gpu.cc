@@ -18,11 +18,20 @@ int main(int argc, char** argv) {
     int N_runs = argc > 3 ? std::stoi(argv[3]) : 100;
     int N_warmup = argc > 4 ? std::stoi(argv[4]) : 5;
     int version = argc > 5 ? std::stoi(argv[5]) : 0;
+    std::string filename = argc > 6 ? argv[6] : "results.csv";
+    
+    std::ifstream file_check(filename);
+    std::ofstream file(filename, std::ios_base::app);
+    //If the file is empty, write the header.
+    if(file_check.peek() == std::ifstream::traits_type::eof()) file << "N,BS,T,TSD,TD,TDSD\n"; 
+
+
     if(N==22 || N%2==1 || N<20 || N>200){
         std::cout << "N must be even and between 20 and 200 and not equal to 22." << std::endl;
         return 1;
     }
     int Nf = N/2 + 2;
+
 
     CuArray<uint16_t> graphs(N_graphs*Nf*6);               //Allocate unified memory to store the batch.
     CuArray<uint8_t> degrees(N_graphs*Nf);
@@ -58,8 +67,13 @@ int main(int argc, char** argv) {
         if(i >= N_warmup) tdiffs[i-N_warmup] = std::abs(duration<double,std::nano>(end - start).count()/N_graphs - duration<double,std::nano>(times[i-N_warmup]).count()/N_graphs);
     }
 
-    std::cout << "N\t | Time\t | Time SD\t | Time Diff\t | Time Diff SD" << std::endl;
-    std::cout << N << ", " << mean(times)/N_graphs << ", " << stddev(times)/N_graphs << ", " <<  mean(tdiffs)/N_graphs << ", " << stddev(tdiffs)/N_graphs << std::endl;
+    file
+        << N << ","
+        << N_graphs << "," 
+        << mean(times)/N_graphs << "," 
+        << stddev(times)/N_graphs << "," 
+        << mean(tdiffs)/N_graphs << ","
+        << stddev(tdiffs)/N_graphs << "\n";
 
     return 0;
 }
