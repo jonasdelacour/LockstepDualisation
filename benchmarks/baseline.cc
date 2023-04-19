@@ -59,7 +59,12 @@ int main(int argc, char** argv) {
     int N_runs =   argc > 3 ? std::stoi(argv[3]) : 10;
     int N_warmup = argc > 4 ? std::stoi(argv[4]) : 1;
     int version =  argc > 5 ? std::stoi(argv[5]) : 0;
+    std::string filename = argc > 6 ? argv[6]    : "results.csv";
 
+    std::ifstream file_check(filename);
+    std::ofstream file(filename, std::ios_base::app);
+    //If the file is empty, write the header.
+    if(file_check.peek() == std::ifstream::traits_type::eof()) file << "N,BS,T,TSD,TD,TDSD\n"; 
     if(N==22 || N%2==1 || N<20 || N>200){
         std::cout
             << "N must be even and between 20 and 200 and not equal to 22."
@@ -116,11 +121,11 @@ int main(int argc, char** argv) {
         }
     }
 
-    std::cout << "N\t | Time\t | Time SD\t " << std::endl;
-    std::cout
-        << N << ",  "
-        << mean(times) / N_graphs << ", "
-        << stddev(times) / N_graphs << std::endl;
+    file
+        << N << ","
+        << sample_size << ","
+        << mean(times) / N_graphs << ","
+        << stddev(times) / N_graphs << ",,\n";
 
     return 0;
 }
