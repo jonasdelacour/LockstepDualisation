@@ -56,7 +56,7 @@ int main(int argc, char** argv){
         << N << ","
         << N_graphs << "," 
         << mean(times)/N_graphs << "," 
-        << stddev(times)/N_graphs << ",,\n" 
+        << stddev(times)/N_graphs << ",,\n";
 
     return 0;
 }
