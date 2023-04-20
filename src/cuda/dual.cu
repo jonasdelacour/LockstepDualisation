@@ -9,18 +9,18 @@ typedef ushort2 edge_t;
 namespace cg = cooperative_groups;
 
 //Declare all the template instantiations that you require: This one is for fullerene graphs specifically.
-template void dualise_V0<6>(const CuArray<node_t>&, const CuArray<uint8_t>&, CuArray<node_t>&, const int, const int, const LaunchCtx&, const LaunchPolicy);
-template void dualise_V1<6>(const CuArray<node_t>&, const CuArray<uint8_t>&, CuArray<node_t>&, const int, const int, const LaunchCtx&, const LaunchPolicy);
+template void dualise_V0<6>(const CuArray<d_node_t>&, const CuArray<uint8_t>&, CuArray<d_node_t>&, const int, const int, const LaunchCtx&, const LaunchPolicy);
+template void dualise_V1<6>(const CuArray<d_node_t>&, const CuArray<uint8_t>&, CuArray<d_node_t>&, const int, const int, const LaunchCtx&, const LaunchPolicy);
 
 
 template<int MaxDegree>
 struct DeviceDualGraph{
-    const node_t* dual_neighbours;                          //(Nf x MaxDegree)
+    const d_node_t* dual_neighbours;                          //(Nf x MaxDegree)
     const uint8_t* face_degrees;                            //(Nf x 1)
     
-    __device__ DeviceDualGraph(const node_t* dual_neighbours, const uint8_t* face_degrees) : dual_neighbours(dual_neighbours), face_degrees(face_degrees) {}
+    __device__ DeviceDualGraph(const d_node_t* dual_neighbours, const uint8_t* face_degrees) : dual_neighbours(dual_neighbours), face_degrees(face_degrees) {}
 
-    __inline__ __device__ node_t dedge_ix(const node_t u, const node_t v) const{
+    __inline__ __device__ d_node_t dedge_ix(const d_node_t u, const d_node_t v) const{
         for (uint8_t j = 0; j < face_degrees[u]; j++){
             if (dual_neighbours[u*MaxDegree + j] == v) return j;
         }
@@ -35,8 +35,8 @@ struct DeviceDualGraph{
      * @param u the node around which the search is performed
      * @return the next node in the clockwise order around u
      */
-    __device__ node_t next(const node_t u, const node_t v) const{
-        node_t j = dedge_ix(u,v);
+    __device__ d_node_t next(const d_node_t u, const d_node_t v) const{
+        d_node_t j = dedge_ix(u,v);
         return dual_neighbours[u*MaxDegree + ((j+1)%face_degrees[u])];
     }
     
@@ -46,8 +46,8 @@ struct DeviceDualGraph{
      * @param u the node around which the search is performed
      * @return the previous node in the clockwise order around u
      */
-    __device__ node_t prev(const node_t u, const node_t v) const{
-        node_t j = dedge_ix(u,v);
+    __device__ d_node_t prev(const d_node_t u, const d_node_t v) const{
+        d_node_t j = dedge_ix(u,v);
         return dual_neighbours[u*MaxDegree + ((j-1+face_degrees[u])%face_degrees[u])];
     }
 
@@ -57,7 +57,7 @@ struct DeviceDualGraph{
      * @param v Destination node.
      * @return The node that comes next on the face.
      */
-    __device__ node_t next_on_face(const node_t u, const node_t v) const{
+    __device__ d_node_t next_on_face(const d_node_t u, const d_node_t v) const{
         return prev(v,u);
     }
 
@@ -67,7 +67,7 @@ struct DeviceDualGraph{
      * @param v Destination node.
      * @return The node that comes next on the face.
      */
-    __device__ node_t prev_on_face(const node_t u, const node_t v) const{
+    __device__ d_node_t prev_on_face(const d_node_t u, const d_node_t v) const{
         return next(v,u);
     }
 
@@ -78,10 +78,10 @@ struct DeviceDualGraph{
      * @param v target node
      * @return cannonical triangle arc 
      */
-    __device__ edge_t get_cannonical_triangle_arc(const node_t u, const node_t v) const{
+    __device__ edge_t get_cannonical_triangle_arc(const d_node_t u, const d_node_t v) const{
         //In a triangle u, v, w there are only 3 possible representative arcs, the cannonical arc is chosen as the one with the smalles source node.
         edge_t min_edge = {u,v};
-        node_t w = next(u,v);
+        d_node_t w = next(u,v);
         if (v < u && v < w) min_edge = {v, w};
         if (w < u && w < v) min_edge = {w, u};
         return min_edge;
@@ -169,25 +169,25 @@ template <typename T> __device__ void ex_scan(T* sdata, const T data, int n){
 
 template <int MaxDegree>
 __global__
-void dualise_V0_(const node_t* G_in, const uint8_t* deg, node_t* G_out , const int N_f,  const int N_graphs){
+void dualise_V0_(const d_node_t* G_in, const uint8_t* deg, d_node_t* G_out , const int N_f,  const int N_graphs){
     auto N_t = 2*(N_f - 2);
-    extern __shared__  node_t sharedmem[];
-    node_t* triangle_numbers = reinterpret_cast<node_t*>(sharedmem);
-    node_t* cached_neighbours = triangle_numbers + N_f*MaxDegree;
+    extern __shared__  d_node_t sharedmem[];
+    d_node_t* triangle_numbers = reinterpret_cast<d_node_t*>(sharedmem);
+    d_node_t* cached_neighbours = triangle_numbers + N_f*MaxDegree;
     uint8_t* cached_degrees = reinterpret_cast<uint8_t*>(cached_neighbours+ N_f*MaxDegree);
-    node_t* smem = reinterpret_cast<node_t*>(cached_neighbours) + N_f*(MaxDegree + 1) ;
+    d_node_t* smem = reinterpret_cast<d_node_t*>(cached_neighbours) + N_f*(MaxDegree + 1) ;
     //Align smem to 32 bytes
-    smem = (node_t*)(((uintptr_t)smem + 31) & ~31);
+    smem = (d_node_t*)(((uintptr_t)smem + 31) & ~31);
     reinterpret_cast<float*>(smem)[threadIdx.x] = 0;
     for (int isomer_idx = blockIdx.x; isomer_idx < N_graphs; isomer_idx += gridDim.x ){
     __syncthreads();
     auto thid = threadIdx.x;
     if (thid < N_f){
-        memcpy(cached_neighbours + thid*MaxDegree, G_in + (thid + isomer_idx*N_f)*MaxDegree, sizeof(node_t)*MaxDegree);
+        memcpy(cached_neighbours + thid*MaxDegree, G_in + (thid + isomer_idx*N_f)*MaxDegree, sizeof(d_node_t)*MaxDegree);
         cached_degrees[thid] = deg[thid + isomer_idx*N_f];
     }
     DeviceDualGraph<MaxDegree> FD(cached_neighbours, cached_degrees);
-    node_t cannon_arcs[MaxDegree]; memset(cannon_arcs, UINT16_MAX,sizeof(node_t)*MaxDegree);
+    d_node_t cannon_arcs[MaxDegree]; memset(cannon_arcs, UINT16_MAX,sizeof(d_node_t)*MaxDegree);
     int represent_count = 0; //The number of triangles that the thid'th node is representative of.
     __syncthreads();
     //Step 1: Find canonical arcs of triangles and store the arcs locally (canon_arcs) and count number of triangles represented by thid.
@@ -201,7 +201,7 @@ void dualise_V0_(const node_t* G_in, const uint8_t* deg, node_t* G_out , const i
         }
     }
     //Step 2: Scan and store in lookup table
-    ex_scan<node_t>(smem,represent_count,N_f);
+    ex_scan<d_node_t>(smem,represent_count,N_f);
     
     if (thid < N_f){
         int arc_count = 0;
@@ -220,7 +220,7 @@ void dualise_V0_(const node_t* G_in, const uint8_t* deg, node_t* G_out , const i
         for (size_t i = 0; i < FD.face_degrees[thid]; i++){
             if(cannon_arcs[i] != UINT16_MAX){
                 auto idx = triangle_numbers[thid*MaxDegree + i];
-                representative_arc_list[idx] = {node_t(thid), cannon_arcs[i]}; 
+                representative_arc_list[idx] = {d_node_t(thid), cannon_arcs[i]}; 
             }
         }
         
@@ -228,7 +228,7 @@ void dualise_V0_(const node_t* G_in, const uint8_t* deg, node_t* G_out , const i
     __syncthreads();
     //Step 4: Find neighbouring triangles through their canonical arcs and find their IDs by looking up in triangle_numbers
     auto [u, v] = representative_arc_list[thid];
-    node_t w = FD.next(u,v);
+    d_node_t w = FD.next(u,v);
 
     edge_t edge_b = FD.get_cannonical_triangle_arc(v, u); G_out[isomer_idx*N_t*3 + thid*3 + 0] = triangle_numbers[edge_b.x * MaxDegree + FD.dedge_ix(edge_b.x, edge_b.y)];
     edge_t edge_c = FD.get_cannonical_triangle_arc(w, v); G_out[isomer_idx*N_t*3 + thid*3 + 1] = triangle_numbers[edge_c.x * MaxDegree + FD.dedge_ix(edge_c.x, edge_c.y)];
@@ -238,25 +238,25 @@ void dualise_V0_(const node_t* G_in, const uint8_t* deg, node_t* G_out , const i
 
 template <int MaxDegree>
 __global__
-void dualise_V1_(const node_t* G_in, const uint8_t* deg, node_t* G_out , const int N_f,  const int N_graphs){
+void dualise_V1_(const d_node_t* G_in, const uint8_t* deg, d_node_t* G_out , const int N_f,  const int N_graphs){
     auto N_t = 2*(N_f - 2);
-    extern __shared__  node_t sharedmem[];
-    node_t* triangle_numbers = reinterpret_cast<node_t*>(sharedmem);
-    node_t* cached_neighbours = triangle_numbers + N_f*MaxDegree;
+    extern __shared__  d_node_t sharedmem[];
+    d_node_t* triangle_numbers = reinterpret_cast<d_node_t*>(sharedmem);
+    d_node_t* cached_neighbours = triangle_numbers + N_f*MaxDegree;
     uint8_t* cached_degrees = reinterpret_cast<uint8_t*>(cached_neighbours+ N_f*MaxDegree);
-    node_t* smem = reinterpret_cast<node_t*>(cached_neighbours) + N_f*(MaxDegree + 1);
+    d_node_t* smem = reinterpret_cast<d_node_t*>(cached_neighbours) + N_f*(MaxDegree + 1);
     //Align smem to 32 bytes
-    smem = (node_t*)(((uintptr_t)smem + 31) & ~31);
+    smem = (d_node_t*)(((uintptr_t)smem + 31) & ~31);
     reinterpret_cast<float*>(smem)[threadIdx.x] = 0;
     for (int isomer_idx = blockIdx.x; isomer_idx < N_graphs; isomer_idx += gridDim.x ){
     __syncthreads();
     auto thid = threadIdx.x;
     if (thid < N_f){
-        memcpy(cached_neighbours + thid*MaxDegree, G_in + (thid + isomer_idx*N_f)*MaxDegree, sizeof(node_t)*MaxDegree);
+        memcpy(cached_neighbours + thid*MaxDegree, G_in + (thid + isomer_idx*N_f)*MaxDegree, sizeof(d_node_t)*MaxDegree);
         cached_degrees[thid] = deg[thid + isomer_idx*N_f];
     }
     DeviceDualGraph<MaxDegree> FD(cached_neighbours, cached_degrees);
-    node_t cannon_arcs[MaxDegree]; memset(cannon_arcs, UINT16_MAX,sizeof(node_t)*MaxDegree);
+    d_node_t cannon_arcs[MaxDegree]; memset(cannon_arcs, UINT16_MAX,sizeof(d_node_t)*MaxDegree);
     int represent_count = 0; //The number of triangles that the thid'th node is representative of.
     __syncthreads();
     //Step 1: Find canonical arcs of triangles and store the arcs locally (canon_arcs) and count number of triangles represented by thid.
@@ -269,7 +269,7 @@ void dualise_V1_(const node_t* G_in, const uint8_t* deg, node_t* G_out , const i
         }
     }
     //Step 2: Scan and store in lookup table
-    ex_scan<node_t>(smem,represent_count,N_f);
+    ex_scan<d_node_t>(smem,represent_count,N_f);
     
     if(thid < N_f){
     int arc_count = 0;
@@ -287,7 +287,7 @@ void dualise_V1_(const node_t* G_in, const uint8_t* deg, node_t* G_out , const i
     for (size_t i = 0; i < FD.face_degrees[thid]; i++){
         if(cannon_arcs[i] != UINT16_MAX){
             auto idx = triangle_numbers[thid*MaxDegree + i];
-            representative_arc_list[idx] = {node_t(thid), cannon_arcs[i]}; 
+            representative_arc_list[idx] = {d_node_t(thid), cannon_arcs[i]}; 
         }
     }
         
@@ -296,7 +296,7 @@ void dualise_V1_(const node_t* G_in, const uint8_t* deg, node_t* G_out , const i
     for(auto tix = threadIdx.x; tix < N_t; tix += blockDim.x){
 
         auto [u, v] = representative_arc_list[tix];
-        node_t w = FD.next(u,v);
+        d_node_t w = FD.next(u,v);
 
         edge_t edge_b = FD.get_cannonical_triangle_arc(v, u); G_out[isomer_idx*N_t*3 + tix*3 + 0] = triangle_numbers[edge_b.x * MaxDegree + FD.dedge_ix(edge_b.x, edge_b.y)];
         edge_t edge_c = FD.get_cannonical_triangle_arc(w, v); G_out[isomer_idx*N_t*3 + tix*3 + 1] = triangle_numbers[edge_c.x * MaxDegree + FD.dedge_ix(edge_c.x, edge_c.y)];
@@ -306,16 +306,18 @@ void dualise_V1_(const node_t* G_in, const uint8_t* deg, node_t* G_out , const i
 }
 
 template <int MaxDegree>
-void dualise_V0(const CuArray<node_t>& G_in, const CuArray<uint8_t>& deg,  CuArray<node_t>& G_out , const int N_f,  const int N_graphs, const LaunchCtx& ctx, const LaunchPolicy policy){
+void dualise_V0(const CuArray<d_node_t>& G_in, const CuArray<uint8_t>& deg,  CuArray<d_node_t>& G_out , const int N_f,  const int N_graphs, const LaunchCtx& ctx, const LaunchPolicy policy){
     cudaSetDevice(ctx.get_device_id());
-    size_t smem = sizeof(node_t)*N_f*(MaxDegree*2 + 2);
+    size_t smem = sizeof(d_node_t)*N_f*(MaxDegree*2 + 2);
     auto N = 2*(N_f - 2);
     static int n_blocks = 0; 
     static bool first = true;
+    static int Nf_ = N_f;
     static cudaDeviceProp prop;
-    if (first){ 
+    if (first || N_f != Nf_){ 
         cudaOccupancyMaxActiveBlocksPerMultiprocessor(&n_blocks, (void*)dualise_V0_<MaxDegree>, N, smem); 
         first = false;
+        Nf_ = N_f;
         cudaGetDeviceProperties(&prop, 0);
         n_blocks *= prop.multiProcessorCount;
     }
@@ -325,19 +327,23 @@ void dualise_V0(const CuArray<node_t>& G_in, const CuArray<uint8_t>& deg,  CuArr
         if(prop.cooperativeLaunch == 1) cudaLaunchCooperativeKernel((void*)dualise_V0_<MaxDegree>, n_blocks, N, kargs, smem, ctx.stream);
         else cudaLaunchKernel((void*)dualise_V0_<MaxDegree>, n_blocks, N, kargs, smem, ctx.stream);
     if (policy == LaunchPolicy::SYNC) cudaStreamSynchronize(ctx.stream);
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) std::cout << "Last cuda error: " << cudaGetErrorString(err) << std::endl;
 }
 
 template <int MaxDegree>
-void dualise_V1(const CuArray<node_t>& G_in, const CuArray<uint8_t>& deg,  CuArray<node_t>& G_out , const int N_f,  const int N_graphs, const LaunchCtx& ctx, const LaunchPolicy policy){
+void dualise_V1(const CuArray<d_node_t>& G_in, const CuArray<uint8_t>& deg,  CuArray<d_node_t>& G_out , const int N_f,  const int N_graphs, const LaunchCtx& ctx, const LaunchPolicy policy){
     cudaSetDevice(ctx.get_device_id());
-    size_t smem = sizeof(node_t)*N_f*(MaxDegree*2 + 2);
+    size_t smem = sizeof(d_node_t)*N_f*(MaxDegree*2 + 2);
     int lcm = (N_f + 31) & ~31; //Round up to nearest multiple of 32 [Warp Size] (Least Common Multiple)
     static int n_blocks = 0; 
     static bool first = true;
+    static int Nf_ = N_f;
     static cudaDeviceProp prop;
-    if (first){ 
+    if (first || N_f != Nf_){ 
         cudaOccupancyMaxActiveBlocksPerMultiprocessor(&n_blocks, (void*)dualise_V1_<MaxDegree>, lcm, smem); 
         first = false;
+        Nf_ = N_f;
         cudaGetDeviceProperties(&prop, 0);
         n_blocks *= prop.multiProcessorCount;
     }
