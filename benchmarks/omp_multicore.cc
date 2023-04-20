@@ -51,7 +51,9 @@ int main(int argc, char** argv){
 
         if(i >= N_warmup) times[i-N_warmup] = duration<double,std::nano>(steady_clock::now() - start).count();
     }
-    
+    //Removes data points that are more than 3 standard deviations away from the mean. (Can be adjusted)
+    remove_outliers(times);
+
     file
         << N << ","
         << N_graphs << "," 

@@ -58,7 +58,7 @@ int main(int argc, char** argv) {
             switch (version)
             {
             case 0:
-                for(int j = 0; j < N_d; j++) {dualise_V0<6>(in_graphs[j], in_degrees[j], out_graphs[j], Nf, N_graphs/N_d, ctxs[j], LaunchPolicy::ASYNC);}
+                for(int j = 0; j < N_d; j++) {dualise_V0<6>(in_graphs[j], in_degrees[j], out_graphs[j], Nf, N_graphs/N_d, ctxs[j], LaunchPolicy::ASYNC);}   //Dualise the batch.
                 break;
             case 1:
                 for(int j = 0; j < N_d; j++) {dualise_V1<6>(in_graphs[j], in_degrees[j], out_graphs[j], Nf, N_graphs/N_d, ctxs[j], LaunchPolicy::ASYNC);}    //Dualise the batch.
@@ -86,7 +86,8 @@ int main(int argc, char** argv) {
             }
         }
     }
-
+    //Removes data points that are more than 3 standard deviations away from the mean. (Can be adjusted)
+    remove_outliers(times);
 
     file
         << N << ","
