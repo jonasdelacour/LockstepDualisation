@@ -94,7 +94,8 @@ int main(int argc, char** argv) {
 
     std::vector<double> times(N_runs); //Times in nanoseconds.
     for (size_t i = 0; i < N_runs + N_warmup; i++) {
-        chrono::_V2::steady_clock::time_point start;
+        chrono::_V2::steady_clock::time_point start = steady_clock::now();
+	
         for (int j = 0; j < N_graphs; ++j) {
             for (size_t k = 0; k < Nf; k++) {
                 G.neighbours[k].clear();
@@ -103,8 +104,6 @@ int main(int argc, char** argv) {
                     if(u != UINT16_MAX) G.neighbours[k].push_back(u);
                 }
             }
-            if(i >= N_warmup)
-                start = steady_clock::now();
 
             G.update();
             PlanarGraph pG = G.dual_graph();
