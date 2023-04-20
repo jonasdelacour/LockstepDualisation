@@ -71,15 +71,19 @@ CuArray<T>::~CuArray(){
 
 template <typename T>
 void CuArray<T>::to_device(const int device){
-    cudaSetDevice(device);
-    cudaMemPrefetchAsync(data, size_*sizeof(T), device);
-    cudaDeviceSynchronize(); //Ensures that the data is copied before the function returns. Enabled for benchmarking purposes, remove for performance
+    #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
+        cudaSetDevice(device);
+        cudaMemPrefetchAsync(data, size_*sizeof(T), device);
+        cudaDeviceSynchronize(); //Ensures that the data is copied before the function returns. Enabled for benchmarking purposes, remove for performance
+    #endif
 } 
 
 template <typename T>
 void CuArray<T>::to_host(){
-    cudaMemPrefetchAsync(data, size_*sizeof(T), cudaCpuDeviceId);
-    cudaDeviceSynchronize(); //Ensures that the data is copied before the function returns. Enabled for benchmarking purposes, remove for performance
+    #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
+        cudaMemPrefetchAsync(data, size_*sizeof(T), cudaCpuDeviceId);
+        cudaDeviceSynchronize(); //Ensures that the data is copied before the function returns. Enabled for benchmarking purposes, remove for performance
+    #endif
 }
 
 //Primitive way of handling the fact that templated code in this translation unit wont be generated unless explicitly instantiated somewhere.
