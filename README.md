@@ -27,17 +27,16 @@ make -j
 ```
 
 ## Run
-After building, the executables are located in the `build/benchmarks` directory. The executables are:
+After building, return to the repository root directory before running the benchmarks.
+The executables are located in the `build/benchmarks` directory. The executables are:
 ```
-build/benchmarks/baseline
-build/benchmarks/omp_multicore
+./build/benchmarks/baseline
+./build/benchmarks/omp_multicore
 ```
 If the benchmarks were built with CUDA support, the following executables are also available:
 ```
-build/benchmarks/single_gpu
-build/benchmarks/multi_gpu
-
-Currently must be run from the root directory of the repository.
+./build/benchmarks/single_gpu
+./build/benchmarks/multi_gpu
 ```
 
 The following arguments can be passed to the executables:
@@ -46,6 +45,8 @@ The following arguments can be passed to the executables:
 3. Number of runs to perform. Default value: 100
 4. Number of warmup runs to perform. Default value: 1
 5. Kernel variant to use default value: 0, Valid values: [0, 1] (ignored for the `baseline` benchmark)
+
+# TODO Mere streamlinet: skriv *aktivt* og *eksplicit* hvad man skal gøre, ikke kun hvad man *kan* gøre.
 
 # TODO THIS SHOULD BE IMPLEMENTED AND THEN BE MERGED WITH THE RUN DESCRIPTION ABOVE:
 Each of the benchmarks produces a CSV file containing the results. A script to run all of the benchmarks and generate the plots from the CSV files is also included in `plotting.ipynb`.
