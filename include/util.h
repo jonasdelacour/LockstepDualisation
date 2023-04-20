@@ -12,3 +12,7 @@ void remove_outliers(std::vector<T>& data, int n_sigma = 2);
 
 template <typename T, typename U>
 void fill(T& G_in, U& degrees, const int Nf, const int N_graphs);
+
+size_t filesize(std::ifstream &f);
+
+std::string cwd();
