@@ -128,6 +128,6 @@ int main(int argc, char** argv) {
         << sample_size << ","
         << mean(times) / N_graphs << ","
         << stddev(times) / N_graphs << ",,\n";
-
+    std::cout << "Mean Time per Graph: " << mean(times) / N_graphs << " +/- " << stddev(times) / N_graphs << " ns" << std::endl;
     return 0;
 }
