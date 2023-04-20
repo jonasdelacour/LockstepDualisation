@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
     int N_runs =   argc > 3 ? std::stoi(argv[3]) : 10;
     int N_warmup = argc > 4 ? std::stoi(argv[4]) : 1;
     int version =  argc > 5 ? std::stoi(argv[5]) : 0;
-    std::string filename = argc > 6 ? argv[6]    : "results.csv";
+    std::string filename = argc > 6 ? argv[6]    : "baseline.csv";
 
     std::ifstream file_check(filename);
     std::ofstream file(filename, std::ios_base::app);
@@ -91,21 +91,15 @@ int main(int argc, char** argv) {
         reinterpret_cast<char*>(input_buffer.data()),
         Nf*6*sizeof(uint16_t)*available_samples);
 
-    std::vector<int> random_IDs(available_samples);
-    std::iota(random_IDs.begin(), random_IDs.end(), 0);
-    std::shuffle(random_IDs.begin(), random_IDs.end(), std::mt19937{42});
-    std::vector<int> id_subset(
-        random_IDs.begin(),
-        random_IDs.begin()+sample_size);
 
     std::vector<double> times(N_runs); //Times in nanoseconds.
-    chrono::_V2::steady_clock::time_point start;
     for (size_t i = 0; i < N_runs + N_warmup; i++) {
-        for (int j = 0; j < sample_size; ++j) {
+        chrono::_V2::steady_clock::time_point start;
+        for (int j = 0; j < N_graphs; ++j) {
             for (size_t k = 0; k < Nf; k++) {
                 G.neighbours[k].clear();
                 for (size_t ii = 0; ii < 6; ii++) {
-                    auto u = input_buffer[id_subset[j]*Nf*6 + k*6 +ii];
+                    auto u = input_buffer[(j%available_samples)*Nf*6 + k*6 +ii];
                     if(u != UINT16_MAX) G.neighbours[k].push_back(u);
                 }
             }
@@ -114,18 +108,17 @@ int main(int argc, char** argv) {
 
             G.update();
             PlanarGraph pG = G.dual_graph();
-
-            if(i >= N_warmup)
-                times[i-N_warmup] = duration<double,std::nano>(
-                    steady_clock::now() - start).count();
         }
+        if(i >= N_warmup)
+            times[i-N_warmup] = duration<double,std::nano>(
+                steady_clock::now() - start).count();
     }
     //Removes data points that are more than 3 standard deviations away from the mean. (Can be adjusted)
     remove_outliers(times);
 
     file
         << N << ","
-        << sample_size << ","
+        << N_graphs << ","
         << mean(times) / N_graphs << ","
         << stddev(times) / N_graphs << ",,\n";
     std::cout << "Mean Time per Graph: " << mean(times) / N_graphs << " +/- " << stddev(times) / N_graphs << " ns" << std::endl;

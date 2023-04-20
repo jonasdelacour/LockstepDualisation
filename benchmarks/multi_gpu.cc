@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
     int N_runs = argc > 3 ? std::stoi(argv[3]) : 1;
     int N_warmup = argc > 4 ? std::stoi(argv[4]) : 1;
     int version = argc > 5 ? std::stoi(argv[5]) : 0;
-    std::string filename = argc > 6 ? argv[6] : "results.csv";
+    std::string filename = argc > 6 ? argv[6] : "multi_gpu.csv";
 
     int N_d = LaunchCtx::get_device_count();
     if(N==22 || N%2==1 || N<20 || N>200){
