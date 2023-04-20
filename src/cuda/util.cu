@@ -3,7 +3,7 @@
 #include "fstream"
 #include "filesystem"
 #include "iostream"
-template void fill(CuArray<node_t>& G_in, CuArray<uint8_t>& degrees, const int Nf, const int N_graphs);
+template void fill(CuArray<d_node_t>& G_in, CuArray<uint8_t>& degrees, const int Nf, const int N_graphs);
 
 template <typename T, typename U>
 void fill(T& G_in, U& degrees, const int Nf, const int N_graphs) {

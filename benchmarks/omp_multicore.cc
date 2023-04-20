@@ -24,9 +24,9 @@ int main(int argc, char** argv){
     if(file_check.peek() == std::ifstream::traits_type::eof()) file << "N,BS,T,TSD,TD,TDSD\n"; 
 
     int Nf = N/2 + 2;
-    std::vector<node_t> in_graphs(N_graphs*Nf*6);
+    std::vector<d_node_t> in_graphs(N_graphs*Nf*6);
     std::vector<uint8_t> in_degrees(N_graphs*Nf);
-    std::vector<node_t> out_graphs(N_graphs*N*3);
+    std::vector<d_node_t> out_graphs(N_graphs*N*3);
 
     fill(in_graphs, in_degrees, Nf, N_graphs);
 
