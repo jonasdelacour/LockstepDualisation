@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
     int N_runs =   argc > 3 ? std::stoi(argv[3]) : 10;
     int N_warmup = argc > 4 ? std::stoi(argv[4]) : 1;
     int version =  argc > 5 ? std::stoi(argv[5]) : 0;
-    std::string filename = argc > 6 ? argv[6]    : "results.csv";
+    std::string filename = argc > 6 ? argv[6]    : "baseline.csv";
 
     std::ifstream file_check(filename);
     std::ofstream file(filename, std::ios_base::app);
