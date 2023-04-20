@@ -171,6 +171,8 @@ template <int MaxDegree>
 __global__
 void dualise_V0_(const d_node_t* G_in, const uint8_t* deg, d_node_t* G_out , const int N_f,  const int N_graphs){
     auto N_t = 2*(N_f - 2);
+    size_t smem_len = max(N_f,N_t)+max(32,N_t>>5)+1;
+
     extern __shared__  d_node_t sharedmem[];
     d_node_t* triangle_numbers = reinterpret_cast<d_node_t*>(sharedmem);
     d_node_t* cached_neighbours = triangle_numbers + N_f*MaxDegree;
@@ -178,7 +180,9 @@ void dualise_V0_(const d_node_t* G_in, const uint8_t* deg, d_node_t* G_out , con
     d_node_t* smem = reinterpret_cast<d_node_t*>(cached_neighbours) + N_f*(MaxDegree + 1) ;
     //Align smem to 32 bytes
     smem = (d_node_t*)(((uintptr_t)smem + 31) & ~31);
-    reinterpret_cast<float*>(smem)[threadIdx.x] = 0;
+
+    for(int tix=threadIdx.x;tix<smem_len;tix+=blockDim.x) reinterpret_cast<uint16_t*>(smem)[tix] = 0;    
+    
     for (int isomer_idx = blockIdx.x; isomer_idx < N_graphs; isomer_idx += gridDim.x ){
     __syncthreads();
     auto thid = threadIdx.x;
@@ -240,6 +244,7 @@ template <int MaxDegree>
 __global__
 void dualise_V1_(const d_node_t* G_in, const uint8_t* deg, d_node_t* G_out , const int N_f,  const int N_graphs){
     auto N_t = 2*(N_f - 2);
+    size_t smem_len = max(N_f,N_t)+max(32,N_f>>5)+1;
     extern __shared__  d_node_t sharedmem[];
     d_node_t* triangle_numbers = reinterpret_cast<d_node_t*>(sharedmem); // 0,....,Nf*MaxDegree*2 (in bytes)
     d_node_t* cached_neighbours = triangle_numbers + N_f*MaxDegree;      // Nf*MaxDegree*2+1,...,Nf*MaxDegree*4?
@@ -248,8 +253,8 @@ void dualise_V1_(const d_node_t* G_in, const uint8_t* deg, d_node_t* G_out , con
     //Align smem to 32 bytes
     smem = (d_node_t*)(((uintptr_t)smem + 31) & ~31);
     //smem = (d_node_t*)(((uint8_t*)smem+31)&~31);
-    
-    reinterpret_cast<float*>(smem)[threadIdx.x] = 0;
+
+    for(int tix=threadIdx.x;tix<smem_len;tix+=blockDim.x) reinterpret_cast<uint16_t*>(smem)[tix] = 0;
     for (int isomer_idx = blockIdx.x; isomer_idx < N_graphs; isomer_idx += gridDim.x ){
     __syncthreads();
     auto thid = threadIdx.x;
@@ -310,15 +315,17 @@ void dualise_V1_(const d_node_t* G_in, const uint8_t* deg, d_node_t* G_out , con
 template <int MaxDegree>
 void dualise_V0(const CuArray<d_node_t>& G_in, const CuArray<uint8_t>& deg,  CuArray<d_node_t>& G_out , const int N_f,  const int N_graphs, const LaunchCtx& ctx, const LaunchPolicy policy){
     cudaSetDevice(ctx.get_device_id());
-    auto N = 2*(N_f - 2);    
-    size_t smem = sizeof(d_node_t)*(N_f*MaxDegree*2 + N + 2*N_f) + 128; 
+    auto N_t = 2*(N_f - 2);
+    size_t local_smem_len = max(N_f,N_t)+max(32,N_t>>5)+1;
+    
+    size_t smem = sizeof(d_node_t)*(N_f*MaxDegree*2 + 2*N_f + local_smem_len) + 128; 
 
     static int n_blocks = 0; 
     static bool first = true;
     static int Nf_ = N_f;
     static cudaDeviceProp prop;
     if (first || N_f != Nf_){ 
-        cudaOccupancyMaxActiveBlocksPerMultiprocessor(&n_blocks, (void*)dualise_V0_<MaxDegree>, N, smem); 
+        cudaOccupancyMaxActiveBlocksPerMultiprocessor(&n_blocks, (void*)dualise_V0_<MaxDegree>, N_t, smem); 
         first = false;
         Nf_ = N_f;
         cudaGetDeviceProperties(&prop, 0);
@@ -327,8 +334,8 @@ void dualise_V0(const CuArray<d_node_t>& G_in, const CuArray<uint8_t>& deg,  CuA
 
     void* kargs[]{(void*)&G_in.data, (void*)&deg.data, (void*)&G_out.data, (void*)&N_f, (void*)&N_graphs};
     if (policy == LaunchPolicy::SYNC) cudaStreamSynchronize(ctx.stream);
-        if(prop.cooperativeLaunch == 1) cudaLaunchCooperativeKernel((void*)dualise_V0_<MaxDegree>, n_blocks, N, kargs, smem, ctx.stream);
-        else cudaLaunchKernel((void*)dualise_V0_<MaxDegree>, n_blocks, N, kargs, smem, ctx.stream);
+        if(prop.cooperativeLaunch == 1) cudaLaunchCooperativeKernel((void*)dualise_V0_<MaxDegree>, n_blocks, N_t, kargs, smem, ctx.stream);
+        else cudaLaunchKernel((void*)dualise_V0_<MaxDegree>, n_blocks, N_t, kargs, smem, ctx.stream);
     if (policy == LaunchPolicy::SYNC) cudaStreamSynchronize(ctx.stream);
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) std::cout << "Last cuda error: " << cudaGetErrorString(err) << std::endl;
@@ -337,8 +344,10 @@ void dualise_V0(const CuArray<d_node_t>& G_in, const CuArray<uint8_t>& deg,  CuA
 template <int MaxDegree>
 void dualise_V1(const CuArray<d_node_t>& G_in, const CuArray<uint8_t>& deg,  CuArray<d_node_t>& G_out , const int N_f,  const int N_graphs, const LaunchCtx& ctx, const LaunchPolicy policy){
     cudaSetDevice(ctx.get_device_id());
-    auto N = 2*(N_f - 2);        
-    size_t smem = sizeof(d_node_t)*(N_f*MaxDegree*2 + N + 2*N_f) + 128; 
+    auto N_t = 2*(N_f - 2);        
+    size_t local_smem_len = max(N_f,N_t)+max(32,N_f>>5)+1;
+    size_t smem = sizeof(d_node_t)*(N_f*MaxDegree*2 + 2*N_f + local_smem_len) + 128;
+    
     int lcm = (N_f + 31) & ~31; //Round up to nearest multiple of 32 [Warp Size] (Least Common Multiple)
     static int n_blocks = 0; 
     static bool first = true;
