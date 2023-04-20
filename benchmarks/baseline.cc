@@ -1,7 +1,7 @@
 #include "fullerenes/polyhedron.hh"
 #include <chrono>
 #include <fstream>
-#include "filesystem"
+#include <unistd.h>
 #include "random"
 #include "numeric"
 #include "util.h"
@@ -80,11 +80,11 @@ int main(int argc, char** argv) {
     FullereneDual G;
     G.neighbours = neighbours_t(Nf, std::vector<node_t>(6));
     G.N = Nf;
-    std::filesystem::path p = std::filesystem::current_path();
-    auto path = p.string() +"/isomerspace_samples/dual_layout_" + to_string(N) +
-        "_seed_42";
+    
+    auto path = cwd() +"/isomerspace_samples/dual_layout_" + to_string(N) + "_seed_42";
     ifstream isomer_sample(path,std::ios::binary);
-    auto fsize = std::filesystem::file_size(path);
+    auto fsize = filesize(isomer_sample);
+    
     std::vector<uint16_t> input_buffer(fsize/sizeof(uint16_t));
     auto available_samples = fsize / (Nf*6*sizeof(uint16_t));
     isomer_sample.read(
