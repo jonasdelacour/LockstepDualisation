@@ -3,8 +3,8 @@
 #include <iostream>
 typedef std::pair<uint16_t,uint16_t> arc_t;
 
-template void dualise_V2<6>(const std::vector<node_t>& G_in, const std::vector<uint8_t>& degrees, std::vector<node_t>& G_out , const int Nf,  const int N_graphs);
-template void dualise_V3<6>(const std::vector<node_t>& G_in, const std::vector<uint8_t>& degrees, std::vector<node_t>& G_out , const int Nf,  const int N_graphs);
+template void dualise_V2<6>(const std::vector<d_node_t>& G_in, const std::vector<uint8_t>& degrees, std::vector<d_node_t>& G_out , const int Nf,  const int N_graphs);
+template void dualise_V3<6>(const std::vector<d_node_t>& G_in, const std::vector<uint8_t>& degrees, std::vector<d_node_t>& G_out , const int Nf,  const int N_graphs);
 
 template <int MaxDegree>
 struct GraphWrapper{
@@ -40,7 +40,7 @@ struct GraphWrapper{
 
 };
 template<int MaxDegree>
-void dualise_V2(const std::vector<node_t>& G_in, const std::vector<uint8_t>& degrees, std::vector<node_t>& G_out , const int Nf,  const int N_graphs){
+void dualise_V2(const std::vector<d_node_t>& G_in, const std::vector<uint8_t>& degrees, std::vector<d_node_t>& G_out , const int Nf,  const int N_graphs){
     int N = (Nf - 2)*2;
     std::vector<uint16_t> triangle_numbers(MaxDegree*Nf, UINT16_MAX);
     std::vector<uint16_t> canon_arcs(MaxDegree*Nf, UINT16_MAX);
@@ -104,7 +104,7 @@ void dualise_V2(const std::vector<node_t>& G_in, const std::vector<uint8_t>& deg
 }
 
 template<int MaxDegree>
-void dualise_V3(const std::vector<node_t>& G_in, const std::vector<uint8_t>& degrees, std::vector<node_t>& G_out , const int Nf,  const int N_graphs){
+void dualise_V3(const std::vector<d_node_t>& G_in, const std::vector<uint8_t>& degrees, std::vector<d_node_t>& G_out , const int Nf,  const int N_graphs){
     #pragma omp parallel 
     {
     int N = (Nf - 2)*2;

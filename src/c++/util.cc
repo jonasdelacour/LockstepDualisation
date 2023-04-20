@@ -15,7 +15,7 @@ template double stddev(std::vector<double> const& data);
 template void remove_outliers(std::vector<float>& data, int n_sigma);
 template void remove_outliers(std::vector<double>& data, int n_sigma);
 
-template void fill(std::vector<node_t>& G_in, std::vector<uint8_t>& degrees, const int Nf, const int N_graphs);
+template void fill(std::vector<d_node_t>& G_in, std::vector<uint8_t>& degrees, const int Nf, const int N_graphs);
 
 template <typename T>
 T mean(const std::vector<T>& v) {
