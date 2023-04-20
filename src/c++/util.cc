@@ -28,6 +28,8 @@ T mean(const std::vector<T>& v) {
 template<typename T>
 T stddev(const std::vector<T>& data)
 {
+  if(data.size() <= 1) return 0;
+  
     // Calculate the mean
     T mn = mean(data);
 
