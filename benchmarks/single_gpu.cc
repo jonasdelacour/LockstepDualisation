@@ -66,6 +66,8 @@ int main(int argc, char** argv) {
         auto end = steady_clock::now();
         if(i >= N_warmup) tdiffs[i-N_warmup] = std::abs(duration<double,std::nano>(end - start).count()/N_graphs - duration<double,std::nano>(times[i-N_warmup]).count()/N_graphs);
     }
+    //Removes data points that are more than 3 standard deviations away from the mean. (Can be adjusted)
+    remove_outliers(times);
 
     file
         << N << ","

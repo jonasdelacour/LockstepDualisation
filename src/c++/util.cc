@@ -4,12 +4,16 @@
 #include "dual.h"
 #include "filesystem"
 #include "fstream"
+#include "algorithm"
 
 template float mean(std::vector<float> const& v);
 template double mean(std::vector<double> const& v);
 
 template float stddev(std::vector<float> const& data);
 template double stddev(std::vector<double> const& data);
+
+template void remove_outliers(std::vector<float>& data, int n_sigma);
+template void remove_outliers(std::vector<double>& data, int n_sigma);
 
 template void fill(std::vector<node_t>& G_in, std::vector<uint8_t>& degrees, const int Nf, const int N_graphs);
 
@@ -36,6 +40,17 @@ T stddev(const std::vector<T>& data)
     // Calculate the variance and return the square root
     T variance = sum_of_squares / (data.size() - 1);
     return std::sqrt(variance);
+}
+
+template<typename T>
+void remove_outliers(std::vector<T>& data, int n_sigma) {
+    if (data.size() < 3) return;
+    std::sort(data.begin(), data.end());
+    T mean_ = mean(data);
+    T stddev_ = stddev(data);
+    T lower_bound = mean_ - n_sigma*stddev_;
+    T upper_bound = mean_ + n_sigma*stddev_;
+    data.erase(std::remove_if(data.begin(), data.end(), [lower_bound, upper_bound](T x) { return x < lower_bound || x > upper_bound; }), data.end());
 }
 
 template <typename T, typename U>
