@@ -14,17 +14,26 @@ set(CMAKE_CXX_STANDARD 17)
 include(CheckLanguage)
 check_language(CUDA)
 
-set(CMAKE_CXX_FLAGS "-std=c++1z -O3 -fPIC -m64 -pthread -fopenmp")
+set(CMAKE_CXX_FLAGS "-std=c++17 -O3 -fPIC -m64 -pthread -fopenmp")
 
 include_directories(AFTER SYSTEM include)
 include_directories(include)
 include_directories(external/fullerenes/include)
 
+#TODO: CUDA include PATH - hvordan?
+#TODO: gencode arch - hvordan?
+
 if(CMAKE_CUDA_COMPILER)
+  enable_language(CUDA)
+  set(CUDA_INCLUDE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+  
+  message("CUDA include path at: ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
+  message("CUDA ARCHITECTURES: ${CUDA_ARCHITECTURES}")
+  
     # TODO less hardcoded include paths.
     # TODO 940mx is arch=compute_50 with path -I/opt/cuda/targets/x86_64-linux/include
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I/opt/nvidia/hpc_sdk/Linux_x86_64/2022/cuda/11.8/include/ -DCUDA_ENABLED")
-    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++17 --use_fast_math --fmad true --ftz true --maxrregcount=40 -Xptxas -v --resource-usage -gencode arch=compute_86,code=sm_86 -I/opt/nvidia/hpc_sdk/Linux_x86_64/2022/cuda/11.8/include/ -DCUDA_ENABLED")
+    set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -I${CUDA_INCLUDE} -DCUDA_ENABLED")
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --generate-line-info -std=c++17 --use_fast_math --fmad true --ftz true --maxrregcount=40 -Xptxas -v --resource-usage -gencode arch=compute_75,code=sm_75 -I${CUDA_INCLUDE} -DCUDA_ENABLED")
     add_subdirectory(src/cuda)
 endif()
 
@@ -32,3 +41,5 @@ add_subdirectory(src/c++)
 add_subdirectory(external/fullerenes EXCLUDE_FROM_ALL)
 add_subdirectory(benchmarks)
 add_subdirectory(validation)
+
+
