@@ -18,6 +18,7 @@ struct GraphWrapper{
             if (neighbours[u*MaxDegree + j] == v) return j;
             if(j == degrees[u] - 1) exit(1);
         }
+        return 0; //Should never get here.
     }
 
     uint16_t next(const uint16_t u, const uint16_t v) const{
