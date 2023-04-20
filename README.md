@@ -36,6 +36,8 @@ If the benchmarks were built with CUDA support, the following executables are al
 ```
 build/benchmarks/single_gpu
 build/benchmarks/multi_gpu
+
+Currently must be run from the root directory of the repository.
 ```
 
 The following arguments can be passed to the executables:
