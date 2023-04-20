@@ -94,6 +94,7 @@ struct DeviceDualGraph{
  * @param data The data to be scanned.
  * @param n The number of elements in the scan.
 */
+#if (__CUDA_ARCH__ >= 700)
 template <typename T> __device__ void ex_scan(T* sdata, const T data, int n){
     auto warpid = threadIdx.x >> 5;
     auto lane = threadIdx.x & 31;
@@ -125,7 +126,46 @@ template <typename T> __device__ void ex_scan(T* sdata, const T data, int n){
     }
     __syncthreads();
 }
+#else
+template <typename T> __device__ T warp_scan(T data){
+    auto lane = threadIdx.x & 31;
+    for (int i = 1; i < warpSize; i *= 2){
+        auto val = __shfl_up_sync(0xffffffff, data, i);
+        if (lane >= i) data += val;
+    }
+    return data;
+}
 
+template <typename T> __device__ void ex_scan(T* sdata, const T data, int n){
+    auto warpid = threadIdx.x >> 5;
+    auto lane = threadIdx.x & 31;
+
+    auto result = warp_scan(data);
+
+    if (lane == 31){
+        sdata[n+1 + warpid] = result;
+    }
+
+    __syncthreads();
+    if (warpid == 0){
+        auto val = warp_scan(sdata[n+1 + lane]);
+        sdata[n+1 + lane] = val;
+    }
+    __syncthreads();
+    if (warpid == 0)
+    {
+        sdata[threadIdx.x + 1] = result;
+    } else{
+        if (threadIdx.x < n) {
+        sdata[threadIdx.x + 1] =  sdata[n+1 + warpid-1] + result;}
+        
+    }
+    if (threadIdx.x == 0){
+        sdata[0] = (T)0;
+    }
+    __syncthreads();
+}
+#endif
 
 template <int MaxDegree>
 __global__
@@ -272,17 +312,18 @@ void dualise_V0(const CuArray<node_t>& G_in, const CuArray<uint8_t>& deg,  CuArr
     auto N = 2*(N_f - 2);
     static int n_blocks = 0; 
     static bool first = true;
+    static cudaDeviceProp prop;
     if (first){ 
         cudaOccupancyMaxActiveBlocksPerMultiprocessor(&n_blocks, (void*)dualise_V0_<MaxDegree>, N, smem); 
         first = false;
-        cudaDeviceProp prop;
         cudaGetDeviceProperties(&prop, 0);
         n_blocks *= prop.multiProcessorCount;
     }
 
     void* kargs[]{(void*)&G_in.data, (void*)&deg.data, (void*)&G_out.data, (void*)&N_f, (void*)&N_graphs};
     if (policy == LaunchPolicy::SYNC) cudaStreamSynchronize(ctx.stream);
-        cudaLaunchCooperativeKernel((void*)dualise_V0_<MaxDegree>, n_blocks, N, kargs, smem, ctx.stream);
+        if(prop.cooperativeLaunch == 1) cudaLaunchCooperativeKernel((void*)dualise_V0_<MaxDegree>, n_blocks, N, kargs, smem, ctx.stream);
+        else cudaLaunchKernel((void*)dualise_V0_<MaxDegree>, n_blocks, N, kargs, smem, ctx.stream);
     if (policy == LaunchPolicy::SYNC) cudaStreamSynchronize(ctx.stream);
 }
 
@@ -293,17 +334,18 @@ void dualise_V1(const CuArray<node_t>& G_in, const CuArray<uint8_t>& deg,  CuArr
     int lcm = (N_f + 31) & ~31; //Round up to nearest multiple of 32 [Warp Size] (Least Common Multiple)
     static int n_blocks = 0; 
     static bool first = true;
+    static cudaDeviceProp prop;
     if (first){ 
         cudaOccupancyMaxActiveBlocksPerMultiprocessor(&n_blocks, (void*)dualise_V1_<MaxDegree>, lcm, smem); 
         first = false;
-        cudaDeviceProp prop;
         cudaGetDeviceProperties(&prop, 0);
         n_blocks *= prop.multiProcessorCount;
     }
 
     void* kargs[]{(void*)&G_in.data, (void*)&deg.data, (void*)&G_out.data, (void*)&N_f, (void*)&N_graphs};
     if (policy == LaunchPolicy::SYNC) cudaStreamSynchronize(ctx.stream);
-        cudaLaunchCooperativeKernel((void*)dualise_V1_<MaxDegree>, n_blocks, lcm, kargs, smem, ctx.stream);
+        if(prop.cooperativeLaunch == 1) cudaLaunchCooperativeKernel((void*)dualise_V1_<MaxDegree>, n_blocks, lcm, kargs, smem, ctx.stream);
+        else cudaLaunchKernel((void*)dualise_V1_<MaxDegree>, n_blocks, lcm, kargs, smem, ctx.stream);
     if (policy == LaunchPolicy::SYNC) cudaStreamSynchronize(ctx.stream);
 }
 
