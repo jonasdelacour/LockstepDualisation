@@ -68,10 +68,10 @@ void dualise_V2(const std::vector<d_node_t>& G_in, const std::vector<uint8_t>& d
             #pragma omp barrier
 
             uint16_t accumulator = 0;
-            #pragma omp simd reduction(inscan,+:accumulator)
+	    //            #pragma omp simd reduction(inscan,+:accumulator)
             for (size_t j = 0; j < Nf; ++j){
                 scan_array[j] = accumulator;
-                #pragma omp scan exclusive(accumulator)
+		//  #pragma omp scan exclusive(accumulator)
                 accumulator += n_triangles[j];
             }
             #pragma omp barrier
