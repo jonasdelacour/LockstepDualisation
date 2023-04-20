@@ -241,12 +241,14 @@ __global__
 void dualise_V1_(const d_node_t* G_in, const uint8_t* deg, d_node_t* G_out , const int N_f,  const int N_graphs){
     auto N_t = 2*(N_f - 2);
     extern __shared__  d_node_t sharedmem[];
-    d_node_t* triangle_numbers = reinterpret_cast<d_node_t*>(sharedmem);
-    d_node_t* cached_neighbours = triangle_numbers + N_f*MaxDegree;
-    uint8_t* cached_degrees = reinterpret_cast<uint8_t*>(cached_neighbours+ N_f*MaxDegree);
-    d_node_t* smem = reinterpret_cast<d_node_t*>(cached_neighbours) + N_f*(MaxDegree + 1);
+    d_node_t* triangle_numbers = reinterpret_cast<d_node_t*>(sharedmem); // 0,....,Nf*MaxDegree*2 (in bytes)
+    d_node_t* cached_neighbours = triangle_numbers + N_f*MaxDegree;      // Nf*MaxDegree*2+1,...,Nf*MaxDegree*4?
+    uint8_t* cached_degrees = reinterpret_cast<uint8_t*>(cached_neighbours + N_f*MaxDegree); // Nf*MaxDegree*4,...,Nf*MaxDegree*4+Nf
+    d_node_t* smem = reinterpret_cast<d_node_t*>(cached_neighbours) + N_f*(MaxDegree + 1);   // Nf*MaxDegree*4+2*Nf+1,...,Nf*(MaxDegree*4)+2*Nf+2*N?
     //Align smem to 32 bytes
     smem = (d_node_t*)(((uintptr_t)smem + 31) & ~31);
+    //smem = (d_node_t*)(((uint8_t*)smem+31)&~31);
+    
     reinterpret_cast<float*>(smem)[threadIdx.x] = 0;
     for (int isomer_idx = blockIdx.x; isomer_idx < N_graphs; isomer_idx += gridDim.x ){
     __syncthreads();
@@ -308,8 +310,9 @@ void dualise_V1_(const d_node_t* G_in, const uint8_t* deg, d_node_t* G_out , con
 template <int MaxDegree>
 void dualise_V0(const CuArray<d_node_t>& G_in, const CuArray<uint8_t>& deg,  CuArray<d_node_t>& G_out , const int N_f,  const int N_graphs, const LaunchCtx& ctx, const LaunchPolicy policy){
     cudaSetDevice(ctx.get_device_id());
-    size_t smem = sizeof(d_node_t)*N_f*(MaxDegree*2 + 2);
-    auto N = 2*(N_f - 2);
+    auto N = 2*(N_f - 2);    
+    size_t smem = sizeof(d_node_t)*(N_f*MaxDegree*2 + N + 2*N_f) + 128; 
+
     static int n_blocks = 0; 
     static bool first = true;
     static int Nf_ = N_f;
@@ -334,7 +337,8 @@ void dualise_V0(const CuArray<d_node_t>& G_in, const CuArray<uint8_t>& deg,  CuA
 template <int MaxDegree>
 void dualise_V1(const CuArray<d_node_t>& G_in, const CuArray<uint8_t>& deg,  CuArray<d_node_t>& G_out , const int N_f,  const int N_graphs, const LaunchCtx& ctx, const LaunchPolicy policy){
     cudaSetDevice(ctx.get_device_id());
-    size_t smem = sizeof(d_node_t)*N_f*(MaxDegree*2 + 2);
+    auto N = 2*(N_f - 2);        
+    size_t smem = sizeof(d_node_t)*(N_f*MaxDegree*2 + N + 2*N_f) + 128; 
     int lcm = (N_f + 31) & ~31; //Round up to nearest multiple of 32 [Warp Size] (Least Common Multiple)
     static int n_blocks = 0; 
     static bool first = true;
