@@ -46,7 +46,7 @@ The following arguments can be passed to the executables:
 4. Number of warmup runs to perform. Default value: 1
 5. Kernel variant to use default value: 0, Valid values: [0, 1] (ignored for the `baseline` benchmark)
 
-# TODO Mere streamlinet: skriv *aktivt* og *eksplicit* hvad man skal gøre, ikke bare hvad man *kan* gøre.
+# TODO Mere streamlinet: skriv *aktivt* og *eksplicit* hvad man skal gøre, ikke kun hvad man *kan* gøre.
 
 # TODO THIS SHOULD BE IMPLEMENTED AND THEN BE MERGED WITH THE RUN DESCRIPTION ABOVE:
 Each of the benchmarks produces a CSV file containing the results. A script to run all of the benchmarks and generate the plots from the CSV files is also included in `plotting.ipynb`.
