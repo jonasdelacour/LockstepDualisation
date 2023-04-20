@@ -59,6 +59,7 @@ int main(int argc, char** argv){
         << N_graphs << "," 
         << mean(times)/N_graphs << "," 
         << stddev(times)/N_graphs << ",,\n";
-
+    
+    std::cout << "Mean Time per Graph: " << mean(times) / N_graphs << " +/- " << stddev(times) / N_graphs << " ns" << std::endl;
     return 0;
 }
