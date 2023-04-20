@@ -1,7 +1,6 @@
 #include "fullerenes/polyhedron.hh"
 #include <chrono>
 #include <fstream>
-#include "filesystem"
 #include "random"
 #include "numeric"
 #include "util.h"
