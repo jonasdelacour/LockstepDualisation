@@ -13,11 +13,14 @@ using namespace std::chrono;
 
 int main(int argc, char** argv) {
     int N = argc > 1 ? std::stoi(argv[1]) : 200;
-    int N_graphs = argc > 2 ? std::stoi(argv[2]) : 1000;
-    int N_runs = argc > 3 ? std::stoi(argv[3]) : 1;
+    int N_graphs = argc > 2 ? std::stoi(argv[2]) : 1000000;
+    int N_runs = argc > 3 ? std::stoi(argv[3]) : 10;
     int N_warmup = argc > 4 ? std::stoi(argv[4]) : 1;
     int version = argc > 5 ? std::stoi(argv[5]) : 0;
     std::string filename = argc > 6 ? argv[6] : "multi_gpu.csv";
+    std::cout << "Dualising " << N_graphs << " triangulation graphs, each with " << N
+              << " triangles, repeated " << N_runs << " times and with " << N_warmup
+              << " warmup runs." << std::endl;
 
     int N_d = LaunchCtx::get_device_count();
     if(N==22 || N%2==1 || N<20 || N>200){
@@ -28,7 +31,7 @@ int main(int argc, char** argv) {
     std::ifstream file_check(filename);
     std::ofstream file(filename, std::ios_base::app);
     //If the file is empty, write the header.
-    if(file_check.peek() == std::ifstream::traits_type::eof()) file << "N,BS,T,TSD,TD,TDSD\n"; 
+    if(file_check.peek() == std::ifstream::traits_type::eof()) file << "N,BS,T,TSD,TD,TDSD\n";
 
     int Nf = N/2 + 2;
 
@@ -90,9 +93,9 @@ int main(int argc, char** argv) {
 
     file
         << N << ","
-        << N_graphs << "," 
-        << mean(times)/N_graphs << "," 
-        << stddev(times)/N_graphs << "," 
+        << N_graphs << ","
+        << mean(times)/N_graphs << ","
+        << stddev(times)/N_graphs << ","
         << mean(tdiffs)/N_graphs << ","
         << stddev(tdiffs)/N_graphs << "\n";
     std::cout << "Mean Time per Graph: " << mean(times) / N_graphs << " +/- " << stddev(times) / N_graphs << " ns" << std::endl;
