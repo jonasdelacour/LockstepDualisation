@@ -6,6 +6,7 @@ endif
 
 .PHONY: build
 build:
+	git submodule update --init
 	mkdir -p build
 	cd build && cmake .. && make -j
 
