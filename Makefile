@@ -1,5 +1,7 @@
-ifeq (($shell which nvcc),) # No 'nvcc' found
-	HAS_GPU=true
+ifeq ($(shell which nvcc),) # No 'nvcc' found
+HAS_GPU=false
+else
+HAS_GPU=true
 endif
 
 .PHONY: build
