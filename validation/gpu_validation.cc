@@ -54,6 +54,7 @@ const std::unordered_map<size_t,size_t> num_fullerenes = {
     {396,120585261143}, {398,125873325588}, {400,132247999328}};
 
 int main() {
+    std::cout << "Validating GPU implementations." << std::endl;
     for (int N = 20; N <= 200; N+=2) {
         if (N == 22) continue;
         std::cout << "N = " << N << std::endl;
@@ -69,7 +70,7 @@ int main() {
             baseline_duals[i].N = Nf;
         }
         std::vector<PlanarGraph> cubic_truth(N_graphs);
-        
+
         fill(graphs, degrees, Nf, N_graphs);
         for (size_t i = 0; i < N_graphs; i++)
             for (size_t j = 0; j < Nf; j++){
@@ -78,13 +79,13 @@ int main() {
                     if (graphs[i*Nf*6 + j*6 + k] == UINT16_MAX) continue;
                     baseline_duals[i].neighbours[j].push_back(graphs[i*Nf*6 + j*6 + k]);
                 }
-            }   
+            }
         for (size_t i = 0; i < N_graphs; i++){
             baseline_duals[i].update();
             cubic_truth[i] = baseline_duals[i].dual_graph();
         }
 
-        
+
 
         //Check that the results are correct.
         //Create lambda function to check if two graphs are equal.
@@ -107,7 +108,7 @@ int main() {
         if (check_graphs()) return 1;
         dualise_V1<6>(graphs, degrees, out_graphs, Nf, N_graphs);
         if (check_graphs()) return 1;
-        
+
 
     }
     std::cout << "Success!" << std::endl;
