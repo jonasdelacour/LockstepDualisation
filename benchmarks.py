@@ -292,14 +292,19 @@ StartOffset = 36 #Start at saturation
 dfbase = pd.read_csv(fname_base)
 df1 = pd.read_csv(fname_omp_shared)
 df2 = pd.read_csv(fname_omp_task)
-df3 = pd.read_csv(fname_one_gpu_v1)
-df4 = pd.read_csv(fname_multi_gpu_v1)
+
+MeanGPU = 1; GPUSD = 0;
+MeanGPU2 = 1; GPU2SD = 0;
+if (num_gpus>0):
+    df3 = pd.read_csv(fname_one_gpu_v1)
+    df4 = pd.read_csv(fname_multi_gpu_v1)
+    MeanGPU = np.mean(df3["T"].to_numpy()[StartOffset:]); GPUSD = np.std(df3["T"].to_numpy()[StartOffset:])
+    MeanGPU2 = np.mean(df4["T"].to_numpy()[StartOffset:]); GPU2SD = np.std(df4["T"].to_numpy()[StartOffset:])
 
 MeanBaseline = np.mean(dfbase["T"].to_numpy()[StartOffset:]); BaselineSD = np.std(dfbase["T"].to_numpy()[StartOffset:])
 MeanShared = np.mean(df1["T"].to_numpy()[StartOffset:]); SharedSD = np.std(df1["T"].to_numpy()[StartOffset:])
 MeanTask = np.mean(df2["T"].to_numpy()[StartOffset:]); TaskSD = np.std(df2["T"].to_numpy()[StartOffset:])
-MeanGPU = np.mean(df3["T"].to_numpy()[StartOffset:]); GPUSD = np.std(df3["T"].to_numpy()[StartOffset:])
-MeanGPU2 = np.mean(df4["T"].to_numpy()[StartOffset:]); GPU2SD = np.std(df4["T"].to_numpy()[StartOffset:])
+
 
 MeanTime = np.array([MeanBaseline, MeanShared, MeanTask, MeanGPU, MeanGPU2])
 MeanSD = np.array([BaselineSD, SharedSD, TaskSD, GPUSD, GPU2SD])
