@@ -136,7 +136,6 @@ for i in range(0,20):
 print("Plotting Batch Size Experiment...")
 df_omp_shared_bs = pd.read_csv(fname_omp_shared_bs)
 df_omp_task_bs = pd.read_csv(fname_omp_task_bs)
-df_single_gpu_bs = pd.read_csv(fname_single_gpu_bs)
 
 import matplotlib.ticker as ticker
 from matplotlib.ticker import MaxNLocator
@@ -153,6 +152,7 @@ ax.set_xlabel("Batch Size [1]")
 add_line(ax, df_omp_shared_bs["BS"].to_numpy(), df_omp_shared_bs["T"].to_numpy(), df_omp_shared_bs["TSD"].to_numpy(), "OpenMP Shared Parrallel Nt = 8", CD["Shared"], 'o', ':')
 add_line(ax, df_omp_task_bs["BS"].to_numpy(), df_omp_task_bs["T"].to_numpy(), df_omp_task_bs["TSD"].to_numpy(), "OpenMP Task Parrallel Nt = 32", CD["Task"], 'o', ':')
 if(num_gpus>0):
+    df_single_gpu_bs = pd.read_csv(fname_single_gpu_bs)
     add_line(ax, df_single_gpu_bs["BS"].to_numpy(), df_single_gpu_bs["T"].to_numpy() + df_single_gpu_bs["TD"].to_numpy(), df_single_gpu_bs["TDSD"].to_numpy(), "std::steady_clock", 'tab:orange', 'o', ':')
     add_line(ax, df_single_gpu_bs["BS"].to_numpy(), df_single_gpu_bs["T"].to_numpy(), df_single_gpu_bs["TSD"].to_numpy(), "cudaEventElapsedTime", CD["GPU_V1"], 'o', ':')
 ax.legend(loc='best')
