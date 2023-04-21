@@ -1,5 +1,7 @@
-ifeq (($shell which nvcc),) # No 'nvcc' found
-	HAS_GPU=true
+ifeq ($(shell which nvcc),) # No 'nvcc' found
+HAS_GPU=false
+else
+HAS_GPU=true
 endif
 
 .PHONY: build
@@ -11,16 +13,16 @@ build:
 all: build benchmarks validation
 
 .PHONY: benchmarks
-benchmarks:
-	python reproduce.py
+benchmarks: build
+	python3 benchmarks.py
 
 .PHONY: validation
 ifeq ($(HAS_GPU), true)
-validation:
+validation: build
 	build/validation/omp_validation
 	build/validation/gpu_validation
 else
-validation:
+validation: build
 	build/validation/omp_validation
 endif
 
