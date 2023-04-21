@@ -15,7 +15,7 @@ Submitted to the 2023 International Conference for High Performance Computing, N
 ## Build
 ### Quickstart
 
-To automatically build, run benchmarks, and run validation, simply run
+To automatically build, run automatic validation, and run benchmarks, simply type
 ```
 make all
 ```
@@ -28,11 +28,11 @@ make build
 ```
 or
 ```
-make benchmarks
+make validation
 ```
 or
 ```
-make validation
+make benchmarks
 ```
 The validation checks the results from all the parallel implementations against the reference sequential dualization implementation in the Fullerene software package.
 For every $n$ in $[20,24,26,\ldots,200]$, the check is performed against a random sample of 10,000 dual $C_n$ fullerene isomer graphs (or the full isomer space if smaller than 10,000).
