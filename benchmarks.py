@@ -8,7 +8,7 @@ Ngpu_warmup = 1 #No branch prediction on GPU, but if prefetching is disabled, th
 #Change this number if the simulation is taking too long.
 #Setting this number to -1 will reduce the batch sizes by 1 power of 2
 OFFSET_BS = 0
-omp_shared_setting = f"OMP_NUM_THREADS={int(NT_shared)} OMP_PROC_BIND=TRUE" 
+omp_shared_setting = f"OMP_NUM_THREADS={int(NT_shared)} OMP_PROC_BIND=TRUE"
 omp_task_setting = f"OMP_NUM_THREADS={int(NT_task)} OMP_PROC_BIND=TRUE"
 
 import matplotlib.pyplot as plt
@@ -22,13 +22,16 @@ import subprocess
 import platform
 
 # Run the command and capture its output
-output = subprocess.check_output(['nvidia-smi', '-L'])
+if os.system('which nvidia-smi') == 0:
+    output = subprocess.check_output(['nvidia-smi', '-L'])
 
-# Convert the byte string to a regular string
-output_str = output.decode('utf-8')
+    # Convert the byte string to a regular string
+    output_str = output.decode('utf-8')
 
-# Count the number of lines in the output
-num_gpus = len(output_str.strip().split('\n'))
+    # Count the number of lines in the output
+    num_gpus = len(output_str.strip().split('\n'))
+else:
+    num_gpus = 0
 
 hostname = platform.node()
 # Print the number of GPUs found
@@ -142,7 +145,7 @@ fig,ax = plt.subplots(figsize=(15,10))
 def add_line(ax, BS, T, SD, label, color, marker, linestyle):
     ax.plot(BS, T, marker=marker, color=color, label=label, linestyle=linestyle)
     ax.fill_between(BS, T - SD, T + SD, alpha=0.1, color='k')
- 
+
 ax.set_yscale('log')
 ax.set_xscale('log')
 ax.set_ylabel("Time / Graph [ns]")
