@@ -1,24 +1,54 @@
-# LockstepDualisation
-Standalone repository for lockstep parallel dualisation. This repository contains the code for the paper "Lockstep-Parallel Cubic Graph-dualization" by Jonas Dornonville de la Cour, Carl-Johannes Johnsen, and James Emil Avery. Submitted to the 2023 International Conference for High Performance
-Computing, Networking, Storage, and Analysis
+# LockstepDualisation Artefact Description
+This repository contains the code for the paper "Lockstep-Parallel Cubic Graph-dualization" by Jonas Dornonville de la Cour, Carl-Johannes Johnsen, and James Emil Avery.
+Submitted to the 2023 International Conference for High Performance Computing, Networking, Storage, and Analysis.
 
 # Instructions
-## Prerequisites
-* CMake 3.1 or higher
-* C++ compiler with C++17 support (Tested and verified with `gcc` 11.3 and 12.2. Does not work with `clang`)
-* Nvidia CUDA Toolkit 11.7 or higher
-* Nvidia GPU with compute capability 7.0 or higher
+## Software Prerequisites
+* Linux or MacOS X (Tested on Ubuntu 18.04, Ubuntu 22.04, Arch Linux 6, MacOS X 13.3.1). CPU version works on Windows WSL on Ubuntu 22.04, GPU version does not due to Windows not supporting NVIDIA Unified Memory.
+* CMake 3.18 or higher (Tested on Cmake 3.23 and 3.26)
+* C++ compiler with C++17 support (Tested and verified with `gcc` 7.5, 11.3, and 12.2. Does not work with `clang`)
+* Nvidia CUDA Toolkit 11.8 or higher
+* Nvidia GPU with compute capability 5.0 or higher
 * Git
-* Fortran compiler (Tested with `gfortran` 11.3 and 12.2)
+* Fortran compiler (Tested with `gfortran` 7.5, 11.3, and 12.2)
 
 ## Build
-In order to build the benchmarks, the submodules must be cloned, followed by applying a patch allowing for ARM compilation:
+### Quickstart
+
+To automatically build, run benchmarks, and run validation, simply run
+```
+make all
+```
+Each of the benchmarks produces a CSV file containing the results, and generates the benchmark plots. 
+The benchmark and validation output will be placed in a directory named `output/<hostname>`.
+
+To only build, or run benchmarks or validation separately, run
+```
+make build
+```
+or
+```
+make benchmarks
+```
+or
+```
+make validation
+```
+The validation checks the results from all the parallel implementations against the reference sequential dualization implementation in the Fullerene software package.
+For every $20 \le n \le 200$, the check is performed against a random sample of 10,000 dual $C_n$ fullerene isomer graphs (or the full isomer space if smaller than 10,000).
+We verify that the results are identical.
+
+The benchmarks can also be performed interactively with the Jupyter notebook, `reproduce.ipynb`.
+
+### Manual build
+In case the automatic build fails for some reason, the individual steps to build and run the software is as follows:
+
+1. Fetch the Fullerene software package as a submodule (for reference comparisons)
 ```
 git submodule update --init
-cd external/fullerenes
-git apply ../../fullerenes.patch
 ```
-After this, the benchmarks can be built using CMake:
+
+2. After this, the benchmarks can be built using `CMake` and `make`:
 ```
 mkdir build
 cd build/
@@ -26,27 +56,33 @@ cmake ..
 make -j
 ```
 
-## Run
+## Manual Run
 After building, return to the repository root directory before running the benchmarks.
-The executables are located in the `build/benchmarks` directory. The executables are:
+The executables are located in the `build/benchmarks` and `build/validation` directories. The executables are:
 ```
-./build/benchmarks/baseline
-./build/benchmarks/omp_multicore
+build/benchmarks/baseline
+build/benchmarks/omp_multicore
+build/benchmarks/single_gpu
+build/benchmarks/multi_gpu
 ```
-If the benchmarks were built with CUDA support, the following executables are also available:
-```
-./build/benchmarks/single_gpu
-./build/benchmarks/multi_gpu
-```
+The GPU benchmarks will only be built if the CUDA toolkit is available.
 
-The following arguments can be passed to the executables:
-1. Number of vertices in each graph. Valid range: [20, 24, 26, 28, ... , 200]
-2. Number of graphs to dualise. Maximum value depends on available GPU memory.
-3. Number of runs to perform. Default value: 100
-4. Number of warmup runs to perform. Default value: 1
-5. Kernel variant to use default value: 0, Valid values: [0, 1] (ignored for the `baseline` benchmark)
+All executables take the same command line parameters. For example:
+```
+./build/benchmarks/multi_gpu <Ntriangles> <Ngraphs> <Nruns> <Nwarmup> <variant:0|1>
+```
+1. `Ntriangles`: one of [20, 24, 26, 28, ... , 200] (to match the fullerene test-data). Default: 200
+2. `Ngraphs` : batch size, i.e. the number of graphs to dualise in parallel. 
+3. `Nruns`: number of repeated runs. Default: 10. To reproduce results from the paper, set to 100 (but takes longer).
+4. 'Nwarmup`: number of warmup runs. Default: 1
+5. `variant`: Kernel variant.
+  - For GPU, kernel 0 uses one thread per triangle (`Ntriangles` threads), and kernel 1 uses one thread per vertex.
+  - For CPU, kernel 0 is the shared-memory parallel version, and kernel 1 is the task-parallel version.
 
-# TODO Mere streamlinet: skriv *aktivt* og *eksplicit* hvad man skal gøre, ikke kun hvad man *kan* gøre.
+For example,
+```
+./build/benchmarks/single_gpu 100 1000000 100 1 1
+```
+runs the single-GPU benchmark for a million C100 fullerene isomers, repeated 100 times for statistics, with a single warmup-run, using GPU kernel 1.
 
-# TODO THIS SHOULD BE IMPLEMENTED AND THEN BE MERGED WITH THE RUN DESCRIPTION ABOVE:
-Each of the benchmarks produces a CSV file containing the results. A script to run all of the benchmarks and generate the plots from the CSV files is also included in `plotting.ipynb`.
+
