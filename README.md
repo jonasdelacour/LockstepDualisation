@@ -35,7 +35,7 @@ or
 make validation
 ```
 The validation checks the results from all the parallel implementations against the reference sequential dualization implementation in the Fullerene software package.
-For every $20 \le n \le 200$, the check is performed against a random sample of 10,000 dual $C_n$ fullerene isomer graphs (or the full isomer space if smaller than 10,000).
+For every $n\in \{20,24,26,\ldots,200}$, the check is performed against a random sample of 10,000 dual $C_n$ fullerene isomer graphs (or the full isomer space if smaller than 10,000).
 We verify that the results are identical.
 
 The benchmarks can also be performed interactively with the Jupyter notebook, `reproduce.ipynb`.
