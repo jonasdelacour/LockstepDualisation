@@ -13,8 +13,8 @@ build:
 all: build benchmarks validation
 
 .PHONY: benchmarks
-benchmarks: build 
-	python reproduce.py
+benchmarks: build
+	python3 benchmarks.py
 
 .PHONY: validation
 ifeq ($(HAS_GPU), true)
@@ -22,7 +22,7 @@ validation: build
 	build/validation/omp_validation
 	build/validation/gpu_validation
 else
-validation: build 
+validation: build
 	build/validation/omp_validation
 endif
 
