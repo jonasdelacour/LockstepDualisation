@@ -15,7 +15,7 @@ Submitted to the 2023 International Conference for High Performance Computing, N
 ## Build
 ### Quickstart
 
-To automatically build and run benchmarks and validation, simply run
+To automatically build, run benchmarks, and run validation, simply run
 ```
 make all
 ```
@@ -34,7 +34,11 @@ or
 ```
 make validation
 ```
+The validation checks the results from all the parallel implementations against the reference sequential dualization implementation in the Fullerene software package.
+For every \( 20 \le n \le 200 \), the check is performed against a random sample of 10,000 dual \( C_n \) fullerene isomer graphs (or the full isomer space if smaller than 10,000).
+We verify that the results are identical.
 
+The benchmarks can also be performed interactively with the Jupyter notebook, `reproduce.ipynb`.
 
 ### Manual build
 In case the automatic build fails for some reason, the individual steps to build and run the software is as follows:
