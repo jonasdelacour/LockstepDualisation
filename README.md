@@ -1,5 +1,5 @@
 # LockstepDualisation Artefact Description
-This repository contains the code for the paper "Lockstep-Parallel Cubic Graph-dualization" by Jonas Dornonville de la Cour, Carl-Johannes Johnsen, and James Emil Avery.
+This repository contains the code for the paper "Lockstep-Parallel Dualization of Surface Triangulations" by Jonas Dornonville de la Cour, Carl-Johannes Johnsen, and James Emil Avery.
 Submitted to the 2023 International Conference for High Performance Computing, Networking, Storage, and Analysis.
 
 # Instructions
