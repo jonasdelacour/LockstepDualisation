@@ -1,48 +1,50 @@
-#include "dual.h"
+#include "cpp_kernels.h"
 #include <vector>
 #include <iostream>
 typedef std::pair<uint16_t,uint16_t> arc_t;
 
-template void dualise_V2<6>(const std::vector<d_node_t>& G_in, const std::vector<uint8_t>& degrees, std::vector<d_node_t>& G_out , const int Nf,  const int N_graphs);
-template void dualise_V3<6>(const std::vector<d_node_t>& G_in, const std::vector<uint8_t>& degrees, std::vector<d_node_t>& G_out , const int Nf,  const int N_graphs);
+template void dualise_omp_shared<6> (IsomerBatch<float,uint16_t>& B);
+template void dualise_omp_task<6>   (IsomerBatch<float,uint16_t>& B);
 
-template <int MaxDegree>
+template <int MaxDegree, typename K>
 struct GraphWrapper{
-    const uint16_t* neighbours;
-    const uint8_t* degrees;
+    const K* neighbours;
+    const K* degrees;
 
-    GraphWrapper(const uint16_t* neighbours, const uint8_t* degrees) : neighbours(neighbours), degrees(degrees) {}
+    GraphWrapper(const K* neighbours, const K* degrees) : neighbours(neighbours), degrees(degrees) {}
 
-    uint16_t dedge_ix(const uint16_t u, const uint16_t v) const{
-        for (uint8_t j = 0; j < degrees[u]; j++){
+    K dedge_ix(const K u, const K v) const{
+        for (K j = 0; j < degrees[u]; j++){
             if (neighbours[u*MaxDegree + j] == v) return j;
             if(j == degrees[u] - 1) exit(1);
         }
         return 0; //Should never get here.
     }
 
-    uint16_t next(const uint16_t u, const uint16_t v) const{
-        uint16_t j = dedge_ix(u,v);
+    K next(const K u, const K v) const{
+        K j = dedge_ix(u,v);
         return neighbours[u*MaxDegree + ((j+1)%degrees[u])];
     }
 
-    uint16_t prev(const uint16_t u, const uint16_t v) const{
-        uint16_t j = dedge_ix(u,v);
+    K prev(const K u, const K v) const{
+        K j = dedge_ix(u,v);
         return neighbours[u*MaxDegree + ((j-1+degrees[u])%degrees[u])];
     }
 
-    arc_t canon_arc(const uint16_t u, const uint16_t v) const{
+    arc_t canon_arc(const K u, const K v) const{
         arc_t edge = {u,v};
-        uint16_t w = next(u,v);
+        K w = next(u,v);
         if (v < u && v < w) return {v,w};
         if (w < u && w < v) return {w,u};
         return edge;
     }
 
 };
-template<int MaxDegree>
-void dualise_V2(const std::vector<d_node_t>& G_in, const std::vector<uint8_t>& degrees, std::vector<d_node_t>& G_out , const int Nf,  const int N_graphs){
-    int N = (Nf - 2)*2;
+template<int MaxDegree, typename T, typename K>
+void dualise_omp_shared(IsomerBatch<T,K>& B){
+    auto N = B.n_atoms;
+    auto Nf = B.n_faces;
+    auto N_graphs = B.m_capacity;
     std::vector<uint16_t> triangle_numbers(MaxDegree*Nf, UINT16_MAX);
     std::vector<uint16_t> canon_arcs(MaxDegree*Nf, UINT16_MAX);
     std::vector<uint16_t> n_triangles(Nf, 0); //Number of triangles that each face owns.
@@ -51,7 +53,7 @@ void dualise_V2(const std::vector<d_node_t>& G_in, const std::vector<uint8_t>& d
     #pragma omp parallel
     {
         for (size_t i = 0; i < N_graphs; ++i){
-            GraphWrapper<MaxDegree> G(G_in.data() + i*Nf*MaxDegree, degrees.data() + i*Nf);
+            GraphWrapper<MaxDegree, K> G(B.dual_neighbours.data() + i*Nf*MaxDegree, B.face_degrees.data() + i*Nf);
             #pragma omp for schedule(auto)
             for (size_t j = 0; j < Nf; ++j){
                 n_triangles[j] = 0;
@@ -96,24 +98,26 @@ void dualise_V2(const std::vector<d_node_t>& G_in, const std::vector<uint8_t>& d
                 arc_t arc_a = G.canon_arc(v,u);
                 arc_t arc_b = G.canon_arc(w,v);
                 arc_t arc_c = G.canon_arc(u,w);
-                G_out[i*N*3 + j*3 + 0] = triangle_numbers[arc_a.first*MaxDegree + G.dedge_ix(arc_a.first, arc_a.second)];
-                G_out[i*N*3 + j*3 + 1] = triangle_numbers[arc_b.first*MaxDegree + G.dedge_ix(arc_b.first, arc_b.second)];
-                G_out[i*N*3 + j*3 + 2] = triangle_numbers[arc_c.first*MaxDegree + G.dedge_ix(arc_c.first, arc_c.second)];
+                B.cubic_neighbours[i*N*3 + j*3 + 0] = triangle_numbers[arc_a.first*MaxDegree + G.dedge_ix(arc_a.first, arc_a.second)];
+                B.cubic_neighbours[i*N*3 + j*3 + 1] = triangle_numbers[arc_b.first*MaxDegree + G.dedge_ix(arc_b.first, arc_b.second)];
+                B.cubic_neighbours[i*N*3 + j*3 + 2] = triangle_numbers[arc_c.first*MaxDegree + G.dedge_ix(arc_c.first, arc_c.second)];
             }
         }
     }
 }
 
-template<int MaxDegree>
-void dualise_V3(const std::vector<d_node_t>& G_in, const std::vector<uint8_t>& degrees, std::vector<d_node_t>& G_out , const int Nf,  const int N_graphs){
+template<int MaxDegree, typename T, typename K>
+void dualise_omp_task(IsomerBatch<T,K>& B){
     #pragma omp parallel 
     {
-    int N = (Nf - 2)*2;
+    auto N = B.n_atoms;
+    auto Nf = B.n_faces;
+    auto N_graphs = B.m_capacity;
     std::vector<uint16_t> triangle_numbers(MaxDegree*Nf, UINT16_MAX);
     std::vector<arc_t> triangle_arcs(N);
     #pragma omp for schedule(auto)
     for (size_t i = 0; i < N_graphs; ++i){
-        GraphWrapper<6> G(G_in.data() + i*Nf*MaxDegree, degrees.data() + i*Nf);
+        GraphWrapper<6, K> G(B.dual_neighbours.data() + i*Nf*MaxDegree, B.face_degrees.data() + i*Nf);
         uint16_t accumulator = 0;
         for (size_t j = 0; j < Nf; ++j){
             for (size_t k = 0; k < G.degrees[j]; ++k){
@@ -132,9 +136,9 @@ void dualise_V3(const std::vector<d_node_t>& G_in, const std::vector<uint8_t>& d
             arc_t arc_a = G.canon_arc(v,u);
             arc_t arc_b = G.canon_arc(w,v);
             arc_t arc_c = G.canon_arc(u,w);
-            G_out[i*N*3 + j*3 + 0] = triangle_numbers[arc_a.first*MaxDegree + G.dedge_ix(arc_a.first, arc_a.second)];
-            G_out[i*N*3 + j*3 + 1] = triangle_numbers[arc_b.first*MaxDegree + G.dedge_ix(arc_b.first, arc_b.second)];
-            G_out[i*N*3 + j*3 + 2] = triangle_numbers[arc_c.first*MaxDegree + G.dedge_ix(arc_c.first, arc_c.second)];
+            B.cubic_neighbours[i*N*3 + j*3 + 0] = triangle_numbers[arc_a.first*MaxDegree + G.dedge_ix(arc_a.first, arc_a.second)];
+            B.cubic_neighbours[i*N*3 + j*3 + 1] = triangle_numbers[arc_b.first*MaxDegree + G.dedge_ix(arc_b.first, arc_b.second)];
+            B.cubic_neighbours[i*N*3 + j*3 + 2] = triangle_numbers[arc_c.first*MaxDegree + G.dedge_ix(arc_c.first, arc_c.second)];
         }
 
     }   

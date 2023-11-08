@@ -1,5 +1,6 @@
 #define SYCLBATCH
 #include "../../include/isomer_batch.h"
+#include <iostream>
 using namespace sycl;
 
 template <typename T, typename K>
@@ -9,31 +10,20 @@ IsomerBatch<T,K>::IsomerBatch(size_t n_atoms, size_t n_isomers) :    n_atoms    
                                                                 xys               (range<1>(n_isomers * n_atoms)), 
                                                                 cubic_neighbours  (range<1>(n_isomers * n_atoms * 3)), 
                                                                 dual_neighbours   (range<1>(6 * n_isomers * (n_atoms / 2 + 2))), 
-                                                                face_degrees      (range<1>((n_atoms / 2 + 2) * 1)), 
+                                                                face_degrees      (range<1>((n_atoms / 2 + 2) * n_isomers)), 
                                                                 IDs               (range<1>(n_isomers)), 
                                                                 iterations        (range<1>(n_isomers)), 
                                                                 statuses          (range<1>(n_isomers))
 {
-    X                 = buffer<coord3d, 1>( range<1>(n_isomers * n_atoms));
-    xys               = buffer<coord2d, 1>( range<1>(n_isomers * n_atoms));
-    cubic_neighbours  = buffer<K, 1>( range<1>(n_isomers * n_atoms * 3));
-    dual_neighbours   = buffer<K, 1>( range<1>(6 * n_isomers * n_faces));
-    face_degrees      = buffer<K, 1>( range<1>(n_isomers * n_faces));
-    IDs               = buffer<size_t, 1>( range<1>(n_isomers));
-    iterations        = buffer<size_t, 1>( range<1>(n_isomers));
-    statuses          = buffer<IsomerStatus, 1>( range<1>(n_isomers));
     
-    host_accessor X_acc(X, no_init);
-    host_accessor xys_acc(xys, no_init);
-    host_accessor cubic_neighbours_acc(cubic_neighbours, no_init);
-    host_accessor dual_neighbours_acc(dual_neighbours, no_init);
-    host_accessor face_degrees_acc(face_degrees, no_init);
-    host_accessor IDs_acc(IDs, no_init);
-    host_accessor iterations_acc(iterations, no_init);
-    host_accessor statuses_acc(statuses, no_init);
-
-        
-
+    sycl::host_accessor X_acc(X, no_init);
+    sycl::host_accessor xys_acc(xys, no_init);
+    sycl::host_accessor cubic_neighbours_acc(cubic_neighbours, no_init);
+    sycl::host_accessor dual_neighbours_acc(dual_neighbours, no_init);
+    sycl::host_accessor face_degrees_acc(face_degrees, no_init);
+    sycl::host_accessor IDs_acc(IDs, no_init);
+    sycl::host_accessor iterations_acc(iterations, no_init);
+    sycl::host_accessor statuses_acc(statuses, no_init);
 
     for (size_t i = 0; i < n_isomers; i++)
     {
@@ -59,5 +49,8 @@ IsomerBatch<T,K>::IsomerBatch(size_t n_atoms, size_t n_isomers) :    n_atoms    
     }
 }   
 
+template <typename T, typename K>
+IsomerBatch<T,K>::IsomerBatch() : IsomerBatch(0, 0) {}
 
 template IsomerBatch<float, uint16_t>::IsomerBatch(size_t n_atom, size_t n_isomers);
+template IsomerBatch<float, uint16_t>::IsomerBatch();

@@ -1,11 +1,11 @@
 #include <fstream>
 #include <iostream>
 #include <unistd.h>
-
+#define CUDABATCH
 #include "util.h"
-#include "dual.h"
+#include "cuda_kernels.h"
 
-template void fill(CuArray<d_node_t>& G_in, CuArray<uint8_t>& degrees, const int Nf, const int N_graphs);
+
 
 
 size_t filesize(std::ifstream &f)
@@ -28,9 +28,11 @@ std::string cwd()
 }
 
 
-template <typename T, typename U>
-void fill(T& G_in, U& degrees, const int Nf, const int N_graphs) {
-  int N = (Nf - 2)*2;
+template <typename T, typename K>
+void fill(IsomerBatch<T,K>& B, int set_div,int offset) {
+  int N = B.n_atoms;
+  int Nf = B.n_faces;
+  int N_graphs = B.m_capacity;
 
   const std::string path = cwd() + "/isomerspace_samples/dual_layout_" + std::to_string(N) + "_seed_42";
   std::ifstream samples(path, std::ios::binary);         //Open the file containing the samples.
@@ -43,9 +45,10 @@ void fill(T& G_in, U& degrees, const int Nf, const int N_graphs) {
   for(int i = 0; i < N_graphs; i++) {                  //Copy the first N_graphs samples into the batch.
     for(int j = 0; j < Nf; j++) {
       for(int k = 0; k < 6; k++) {
-	G_in[i*Nf*6 + j*6 + k] = in_buffer[(i%n_samples)*Nf*6 + j*6 + k];
-	if(k==5) degrees[i*Nf + j] = in_buffer[(i%n_samples)*Nf*6 + j*6 + k] == UINT16_MAX ? 5 : 6;
+	B.dual_neighbours[i*Nf*6 + j*6 + k] = in_buffer[(i%(n_samples/set_div) + offset)*Nf*6 + j*6 + k];
+	if(k==5) B.face_degrees[i*Nf + j] = in_buffer[(i%(n_samples/set_div) + offset)*Nf*6 + j*6 + k] == UINT16_MAX ? 5 : 6;
       }
     }
   }
 }
+template void fill(IsomerBatch<float,uint16_t>& B, int set_div, int offset);
