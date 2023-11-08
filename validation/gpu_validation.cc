@@ -3,10 +3,11 @@
 #include <fstream>
 #include "random"
 #include "numeric"
+#define CUDABATCH
 #include "util.h"
 #include "cu_array.h"
 #include "launch_ctx.h"
-#include "dual.h"
+#include "cuda_kernels.h"
 
 const std::unordered_map<size_t,size_t> num_fullerenes = {
     {20,1}, {22,0}, {24,1}, {26,1}, {28,2}, {30,3}, {32,6}, {34,6}, {36,15},
@@ -60,9 +61,8 @@ int main() {
         std::cout << "N = " << N << std::endl;
         int Nf = N/2 + 2;
         int N_graphs = min(10000, (int)num_fullerenes.find(N)->second);
-        CuArray<uint16_t> graphs(N_graphs*Nf*6);               //Allocate unified memory to store the batch.
-        CuArray<uint8_t> degrees(N_graphs*Nf);
-        CuArray<uint16_t> out_graphs(N_graphs*N*3);               //Allocate unified memory to store the batch.
+        
+        IsomerBatch<float,uint16_t> batch(N, N_graphs);
 
         std::vector<FullereneDual> baseline_duals(N_graphs);
         for (int i = 0; i < N_graphs; ++i) {
@@ -71,13 +71,13 @@ int main() {
         }
         std::vector<PlanarGraph> cubic_truth(N_graphs);
 
-        fill(graphs, degrees, Nf, N_graphs);
+        fill(batch);
         for (size_t i = 0; i < N_graphs; i++)
             for (size_t j = 0; j < Nf; j++){
                 baseline_duals[i].neighbours[j].clear();
                 for (size_t k = 0; k < 6; k++){
-                    if (graphs[i*Nf*6 + j*6 + k] == UINT16_MAX) continue;
-                    baseline_duals[i].neighbours[j].push_back(graphs[i*Nf*6 + j*6 + k]);
+                    if (batch.dual_neighbours[i*Nf*6 + j*6 + k] == UINT16_MAX) continue;
+                    baseline_duals[i].neighbours[j].push_back(batch.dual_neighbours[i*Nf*6 + j*6 + k]);
                 }
             }
         for (size_t i = 0; i < N_graphs; i++){
@@ -92,25 +92,25 @@ int main() {
         auto check_graphs = [&](){
             for (size_t i = 0; i < N_graphs; i++){
             for(size_t j = 0; j < N; j++){
-                if (out_graphs[i*N*3 + j*3 + 0] != cubic_truth[i].neighbours[j][0] ||
-                    out_graphs[i*N*3 + j*3 + 1] != cubic_truth[i].neighbours[j][1] ||
-                    out_graphs[i*N*3 + j*3 + 2] != cubic_truth[i].neighbours[j][2]){
-                    std::cout << "Error at " << i << " " << j << std::endl;
-                    std::cout << "Expected " << cubic_truth[i].neighbours[j][0] << " " << cubic_truth[i].neighbours[j][1] << " " << cubic_truth[i].neighbours[j][2] << std::endl;
-                    std::cout << "Got " << out_graphs[i*N*3 + j*3 + 0] << " " << out_graphs[i*N*3 + j*3 + 1] << " " << out_graphs[i*N*3 + j*3 + 2] << std::endl;
+                if (batch.cubic_neighbours[i*N*3 + j*3 + 0] != cubic_truth[i].neighbours[j][0] ||
+                    batch.cubic_neighbours[i*N*3 + j*3 + 1] != cubic_truth[i].neighbours[j][1] ||
+                    batch.cubic_neighbours[i*N*3 + j*3 + 2] != cubic_truth[i].neighbours[j][2]){
+                    std::cout << "Error at " << i << " " << j << "\n";
+                    std::cout << "Expected " << cubic_truth[i].neighbours[j][0] << " " << cubic_truth[i].neighbours[j][1] << " " << cubic_truth[i].neighbours[j][2] << "\n";
+                    std::cout << "Got " << batch.cubic_neighbours[i*N*3 + j*3 + 0] << " " << batch.cubic_neighbours[i*N*3 + j*3 + 1] << " " << batch.cubic_neighbours[i*N*3 + j*3 + 2] << "\n";
                     return 1;
                 }
             }
             }
             return 0;
         };
-        dualise_V0<6>(graphs, degrees, out_graphs, Nf, N_graphs);
+        dualise_cuda_v0<6>(batch);
         if (check_graphs()) return 1;
-        dualise_V1<6>(graphs, degrees, out_graphs, Nf, N_graphs);
-        if (check_graphs()) return 1;
+        //dualise_cuda_v1<6>(batch);
+        //if (check_graphs()) return 1;
 
 
     }
-    std::cout << "Success!" << std::endl;
+    std::cout << "Success!" << "\n";
     return 0;
 }

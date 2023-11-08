@@ -1,5 +1,7 @@
-#pragma once
+/* #pragma once
 typedef unsigned short d_node_t;
+enum class LaunchPolicy {SYNC, ASYNC};
+enum ForcefieldType {WIRZ, PEDERSEN, FLATNESS_ENABLED};
 #ifdef CUDA_ENABLED
 #include "launch_ctx.h"
 #include "cu_array.h"
@@ -8,22 +10,50 @@ typedef unsigned short d_node_t;
 #include <stdint.h>
 
 //TODO: add versions which don't use CuArray, LaunchCtx, LaunchPolicy, but instead allocates memory itself, copies data to GPU, runs kernel, copies data back, and frees memory
-template <int MaxDegree>
-void dualise_V0(const d_node_t* G_in, const uint8_t* degrees, d_node_t* G_out , const int Nf,  const int N_graphs);
-
-template <int MaxDegree>
-void dualise_V1(const d_node_t* G_in, const uint8_t* degrees, d_node_t* G_out , const int Nf,  const int N_graphs);
 
 #ifdef CUDA_ENABLED
-template <int MaxDegree>
-void dualise_V0(const CuArray<d_node_t>& G_in, const CuArray<uint8_t>& degrees, CuArray<d_node_t>& G_out, const int Nf, const int N_graphs, const LaunchCtx& ctx = LaunchCtx(), const LaunchPolicy policy = LaunchPolicy::SYNC);
+#define CUDABATCH
+#include "isomer_batch.h"
+template <int MaxDegree, typename T, typename K>
+void dualise_cuda_v0(IsomerBatch<T,K>& B, const LaunchCtx& ctx = LaunchCtx(),       const LaunchPolicy policy = LaunchPolicy::SYNC);
 
-template <int MaxDegree>
-void dualise_V1(const CuArray<d_node_t>& G_in, const CuArray<uint8_t>& degrees, CuArray<d_node_t>& G_out, const int Nf, const int N_graphs, const LaunchCtx& ctx = LaunchCtx(), const LaunchPolicy policy = LaunchPolicy::SYNC);
+template <int MaxDegree, typename T, typename K>
+void dualise_cuda_v1(IsomerBatch<T,K>& B, const LaunchCtx& ctx = LaunchCtx(),       const LaunchPolicy policy = LaunchPolicy::SYNC);
+
+template <typename T, typename K>
+void tutte_layout(IsomerBatch<T,K>& B, const LaunchCtx& ctx = LaunchCtx(),          const LaunchPolicy policy = LaunchPolicy::SYNC);
+
+template <typename T, typename K>
+void spherical_projection(IsomerBatch<T,K>& B, const LaunchCtx& ctx = LaunchCtx(),  const LaunchPolicy policy = LaunchPolicy::SYNC);
+
+template <ForcefieldType FFT = PEDERSEN, typename T, typename K>
+void forcefield_optimise(IsomerBatch<T,K>& B, const int iterations, const int max_iterations, const LaunchCtx& ctx = LaunchCtx(), const LaunchPolicy policy = LaunchPolicy::SYNC);
+
+#ifdef SYCL_ENABLED
+#define SYCLBATCH
+#include "isomer_batch.h"
+template <int MaxDegree, typename T, typename K>
+void dualise_sycl_v0        (sycl::queue& Q, IsomerBatch<T,K>& B, const LaunchPolicy policy = LaunchPolicy::SYNC);
+
+template <int MaxDegree, typename T, typename K>
+void dualise_sycl_v1        (sycl::queue&Q, IsomerBatch<T,K>& B, const LaunchPolicy policy = LaunchPolicy::SYNC);
+
+template <typename T, typename K>
+void tutte_layout           (sycl::queue&Q, IsomerBatch<T,K>& B, const LaunchPolicy policy = LaunchPolicy::SYNC);
+
+template <typename T, typename K>
+void spherical_projection   (sycl::queue&Q, IsomerBatch<T,K>& B, const LaunchPolicy policy = LaunchPolicy::SYNC);
+
+template <ForcefieldType FFT = PEDERSEN, typename T, typename K>
+void forcefield_optimise    (sycl::queue&Q, IsomerBatch<T,K>& B, const int iterations, const int max_iterations, const LaunchPolicy policy = LaunchPolicy::SYNC);
+
+#else
+#define CPPBATCH
+#include "isomer_batch.h"
+template <int MaxDegree, typename T, typename K>
+void dualise_omp_shared (IsomerBatch<T,K>& B);
+
+template <int MaxDegree, typename T, typename K>
+void dualise_omp_task   (IsomerBatch<T,K>& B);
 #endif
-
-template <int MaxDegree>
-void dualise_V2(const std::vector<d_node_t>& G_in, const std::vector<uint8_t>& degrees, std::vector<d_node_t>& G_out , const int Nf,  const int N_graphs);
-
-template <int MaxDegree>
-void dualise_V3(const std::vector<d_node_t>& G_in, const std::vector<uint8_t>& degrees, std::vector<d_node_t>& G_out , const int Nf,  const int N_graphs);
+ */

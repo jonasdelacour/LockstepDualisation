@@ -1,4 +1,4 @@
-#include "dual.h"
+#include "cpp_kernels.h"
 #include "util.h"
 #include <iostream>
 #include <fstream>
@@ -27,11 +27,9 @@ int main(int argc, char** argv){
     if(file_check.peek() == std::ifstream::traits_type::eof()) file << "N,BS,T,TSD,TD,TDSD\n";
 
     int Nf = N/2 + 2;
-    std::vector<d_node_t> in_graphs(N_graphs*Nf*6);
-    std::vector<uint8_t> in_degrees(N_graphs*Nf);
-    std::vector<d_node_t> out_graphs(N_graphs*N*3);
+    IsomerBatch<float,uint16_t> batch(N, N_graphs);
 
-    fill(in_graphs, in_degrees, Nf, N_graphs);
+    fill(batch);
 
     std::vector<double> times(N_runs); //Times in nanoseconds.
     _V2::steady_clock::time_point start;
@@ -43,10 +41,10 @@ int main(int argc, char** argv){
         switch (version)
         {
         case 0: //Shared-memory parallel version.
-            dualise_V2<6>(in_graphs, in_degrees, out_graphs, Nf, N_graphs);
+            dualise_omp_shared<6>(batch);
             break;
         case 1: //Task parallel version.
-            dualise_V3<6>(in_graphs, in_degrees, out_graphs, Nf, N_graphs);
+            dualise_omp_task<6>(batch);
             break;
         default:
             break;

@@ -1,13 +1,15 @@
-#define CUDABATCH
-#include "cuda_kernels.h"
+#include "dual.h"
 #include "util.h"
 #include "fstream"
 #include "iostream"
+#include "cu_array.h"
 #include "vector"
 #include "chrono"
 #include "numeric"
 #include "cmath"
 #include "algorithm"
+#include "mpi.h"
+#include "unistd.h"
 using namespace std::chrono_literals;
 using namespace std::chrono;
 
@@ -17,7 +19,7 @@ int main(int argc, char** argv) {
     int N_runs = argc > 3 ? std::stoi(argv[3]) : 10;
     int N_warmup = argc > 4 ? std::stoi(argv[4]) : 1;
     int version = argc > 5 ? std::stoi(argv[5]) : 0;
-    std::string filename = argc > 6 ? argv[6] : "multi_gpu.csv";
+    std::string filename = argc > 6 ? argv[6] : "multi_node_multi_gpu.csv";
     std::cout << "Dualising " << N_graphs << " triangulation graphs, each with " << N
               << " triangles, repeated " << N_runs << " times and with " << N_warmup
               << " warmup runs." << std::endl;
@@ -28,6 +30,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+
     std::ifstream file_check(filename);
     std::ofstream file(filename, std::ios_base::app);
     //If the file is empty, write the header.
@@ -35,11 +38,19 @@ int main(int argc, char** argv) {
 
     int Nf = N/2 + 2;
 
-    std::vector<IsomerBatch<float,uint16_t>> batches; batches.push_back(IsomerBatch<float,uint16_t>(N, N_graphs/N_d + N_graphs%N_d));
+    std::vector<CuArray<uint16_t>> in_graphs(N_d); for(int i = 0; i < N_d; i++) {in_graphs[i]=CuArray<uint16_t>((N_graphs/N_d + N_graphs%N_d)*Nf*6);}
+    std::vector<CuArray<uint8_t>> in_degrees(N_d); for(int i = 0; i < N_d; i++) {in_degrees[i]=CuArray<uint8_t>((N_graphs/N_d + N_graphs%N_d)*Nf);}
+    std::vector<CuArray<uint16_t>> out_graphs(N_d); for(int i = 0; i < N_d; i++) {out_graphs[i]=CuArray<uint16_t>((N_graphs/N_d + N_graphs%N_d)*N*3);}
 
-    for(int i = 0; i < N_d; i++) fill(batches[i]);
+    for(int i = 0; i < N_d; i++) fill(in_graphs[i], in_degrees[i], Nf, N_graphs/N_d + N_graphs%N_d);
 
     std::vector<LaunchCtx> ctxs(N_d); for(int i = 0; i < N_d; i++) {ctxs[i] = LaunchCtx(i);}
+
+    for(int i = 0; i < N_d; i++) {
+        in_graphs[i].to_device(i);
+        in_degrees[i].to_device(i);
+        out_graphs[i].to_device(i);
+    }
 
     std::vector<double> times(N_runs); //Times in nanoseconds.
     std::vector<double> tdiffs(N_runs); //Timing differences in nanoseconds.
@@ -52,10 +63,10 @@ int main(int argc, char** argv) {
             switch (version)
             {
             case 0:
-                for(int j = 0; j < N_d; j++) {dualise_cuda_v0<6>(batches[j], ctxs[j], LaunchPolicy::ASYNC);}   //Dualise the batch.
+                for(int j = 0; j < N_d; j++) {dualise_V0<6>(in_graphs[j], in_degrees[j], out_graphs[j], Nf, N_graphs/N_d, ctxs[j], LaunchPolicy::ASYNC);}   //Dualise the batch.
                 break;
             case 1:
-                for(int j = 0; j < N_d; j++) {dualise_cuda_v1<6>(batches[j], ctxs[j], LaunchPolicy::ASYNC);}    //Dualise the batch.
+                for(int j = 0; j < N_d; j++) {dualise_V1<6>(in_graphs[j], in_degrees[j], out_graphs[j], Nf, N_graphs/N_d, ctxs[j], LaunchPolicy::ASYNC);}    //Dualise the batch.
                 break;
             default:
                 break;
@@ -70,10 +81,10 @@ int main(int argc, char** argv) {
             switch (version)
             {
             case 0:
-                for(int j = 0; j < N_d; j++) dualise_cuda_v0<6>(batches[j], ctxs[j], LaunchPolicy::ASYNC);    //Dualise the batch.
+                for(int j = 0; j < N_d; j++) dualise_V0<6>(in_graphs[j], in_degrees[j], out_graphs[j], Nf, N_graphs/N_d, ctxs[j], LaunchPolicy::ASYNC);    //Dualise the batch.
                 break;
             case 1:
-                for(int j = 0; j < N_d; j++) dualise_cuda_v1<6>(batches[j], ctxs[j], LaunchPolicy::ASYNC);    //Dualise the batch.
+                for(int j = 0; j < N_d; j++) dualise_V1<6>(in_graphs[j], in_degrees[j], out_graphs[j], Nf, N_graphs/N_d, ctxs[j], LaunchPolicy::ASYNC);    //Dualise the batch.
                 break;
             default:
                 break;
