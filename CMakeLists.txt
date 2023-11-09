@@ -10,23 +10,38 @@ endif()
 
 project(Dualisation)
 
-set(CMAKE_CXX_STANDARD 17)
+
+
 include(CheckLanguage)
 check_language(CUDA)
-
-set(CMAKE_CXX_FLAGS "-std=c++17 -O3 -fPIC -m64 -pthread -fopenmp")
-
-include_directories(AFTER SYSTEM include)
-include_directories(include)
-include_directories(external/fullerenes/include)
+#set(CMAKE_CXX_COMPILER "/opt/nvidia/hpc_sdk/Linux_x86_64/22.11/compilers/bin/nvc++")
 
 if(CMAKE_CUDA_COMPILER)
+  message("CUDA version: ${CUDA_VERSION}")
+  message("CUDA toolkit root directory: ${CUDA_TOOLKIT_ROOT_DIR}")
+  message("CUDA devices: ${CUDA_DEVICES}")
   enable_language(CUDA)
   set(CUDA_INCLUDE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
   
   message("CUDA include path at: ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
   message("CUDA ARCHITECTURES: ${CUDA_ARCHITECTURES}")
   
+endif()
+set(CMAKE_CXX_STANDARD 17)
+##Check if compiler is g++ or gcc and if so, set flags, else if nvc++ set different flags
+#if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
+#    set(CMAKE_CXX_FLAGS "-std=c++17 -O3 -fPIC -m64 -pthread -fopenmp")
+#elseif(CMAKE_CXX_COMPILER_ID MATCHES "NVIDIA")
+#endif()
+
+set(CMAKE_CXX_FLAGS "-std=c++17 -O3 -mp=gpu")
+
+include_directories(AFTER SYSTEM include)
+include_directories(include)
+include_directories(external/fullerenes/include)
+
+if(CMAKE_CUDA_COMPILER)
+    set(CUDA_INCLUDE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
     set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -I${CUDA_INCLUDE} -DCUDA_ENABLED")
     set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --generate-line-info -std=c++17 --use_fast_math --fmad true --ftz true --maxrregcount=40 -Xptxas -v --resource-usage -arch native -I${CUDA_INCLUDE} -DCUDA_ENABLED")
     add_subdirectory(src/cuda)
