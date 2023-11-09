@@ -3,9 +3,9 @@
 #include <fstream>
 #include "random"
 #include "numeric"
-#define CPPBATCH
+#define SYCLBATCH
 #include "util.h"
-#include "cpp_kernels.h"
+#include "sycl_kernels.h"
 
 const std::unordered_map<size_t,size_t> num_fullerenes = {
     {20,1}, {22,0}, {24,1}, {26,1}, {28,2}, {30,3}, {32,6}, {34,6}, {36,15},
@@ -53,14 +53,15 @@ const std::unordered_map<size_t,size_t> num_fullerenes = {
     {396,120585261143}, {398,125873325588}, {400,132247999328}};
 
 int main() {
-    std::cout << "Validating OpenMP implementations." << std::endl;
+    std::cout << "Validating GPU implementations." << std::endl;
+    auto Q = sycl::queue(sycl::cpu_selector_v);
     for (int N = 20; N <= 200; N+=2) {
         if (N == 22) continue;
         std::cout << "N = " << N << std::endl;
         int Nf = N/2 + 2;
         int N_graphs = min(10000, (int)num_fullerenes.find(N)->second);
+        
         IsomerBatch<float,uint16_t> batch(N, N_graphs);
-
         std::vector<FullereneDual> baseline_duals(N_graphs);
         for (int i = 0; i < N_graphs; ++i) {
             baseline_duals[i].neighbours = neighbours_t(Nf,std::vector<int>(6));
@@ -69,42 +70,51 @@ int main() {
         std::vector<PlanarGraph> cubic_truth(N_graphs);
 
         fill(batch);
-        for (size_t i = 0; i < N_graphs; i++)
-            for (size_t j = 0; j < Nf; j++){
-                baseline_duals[i].neighbours[j].clear();
-                for (size_t k = 0; k < 6; k++){
-                    if (batch.dual_neighbours[i*Nf*6 + j*6 + k] == UINT16_MAX) continue;
-                    baseline_duals[i].neighbours[j].push_back(batch.dual_neighbours[i*Nf*6 + j*6 + k]);
+        //This scope is necessary to ensure that the host accessors are destroyed before the dualisation, otherwise dualise will block execution forever.
+        {
+            sycl::host_accessor<uint16_t,1> h_cubic_neighbours(batch.cubic_neighbours);
+            sycl::host_accessor<uint16_t,1> h_dual_neighbours(batch.dual_neighbours);
+            for (size_t i = 0; i < N_graphs; i++)
+                for (size_t j = 0; j < Nf; j++){
+                    baseline_duals[i].neighbours[j].clear();
+                    for (size_t k = 0; k < 6; k++){
+                        if (h_dual_neighbours[i*Nf*6 + j*6 + k] == UINT16_MAX) continue;
+                        baseline_duals[i].neighbours[j].push_back(h_dual_neighbours[i*Nf*6 + j*6 + k]);
+                    }
                 }
+            for (size_t i = 0; i < N_graphs; i++){
+                baseline_duals[i].update();
+                cubic_truth[i] = baseline_duals[i].dual_graph();
             }
-        for (size_t i = 0; i < N_graphs; i++){
-            baseline_duals[i].update();
-            cubic_truth[i] = baseline_duals[i].dual_graph();
         }
+        
 
 
 
         //Check that the results are correct.
         //Create lambda function to check if two graphs are equal.
         auto check_graphs = [&](){
+            sycl::host_accessor<uint16_t,1> h_cubic_neighbours(batch.cubic_neighbours);
+            sycl::host_accessor<uint16_t,1> h_dual_neighbours(batch.dual_neighbours);
             for (size_t i = 0; i < N_graphs; i++){
             for(size_t j = 0; j < N; j++){
-                if (batch.cubic_neighbours[i*N*3 + j*3 + 0] != cubic_truth[i].neighbours[j][0] ||
-                    batch.cubic_neighbours[i*N*3 + j*3 + 1] != cubic_truth[i].neighbours[j][1] ||
-                    batch.cubic_neighbours[i*N*3 + j*3 + 2] != cubic_truth[i].neighbours[j][2]){
+                if (h_cubic_neighbours[i*N*3 + j*3 + 0] != cubic_truth[i].neighbours[j][0] ||
+                    h_cubic_neighbours[i*N*3 + j*3 + 1] != cubic_truth[i].neighbours[j][1] ||
+                    h_cubic_neighbours[i*N*3 + j*3 + 2] != cubic_truth[i].neighbours[j][2]){
                     std::cout << "Error at " << i << " " << j << std::endl;
                     std::cout << "Expected " << cubic_truth[i].neighbours[j][0] << " " << cubic_truth[i].neighbours[j][1] << " " << cubic_truth[i].neighbours[j][2] << std::endl;
-                    std::cout << "Got " << batch.cubic_neighbours[i*N*3 + j*3 + 0] << " " << batch.cubic_neighbours[i*N*3 + j*3 + 1] << " " << batch.cubic_neighbours[i*N*3 + j*3 + 2] << std::endl;
+                    std::cout << "Got " << h_cubic_neighbours[i*N*3 + j*3 + 0] << " " << h_cubic_neighbours[i*N*3 + j*3 + 1] << " " << h_cubic_neighbours[i*N*3 + j*3 + 2] << std::endl;
                     return 1;
                 }
             }
             }
             return 0;
         };
-        dualise_omp_shared<6>(batch);
+
+        dualise_sycl_v0<6>(Q, batch);
         if (check_graphs()) return 1;
-        dualise_omp_task<6>(batch);
-        if (check_graphs()) return 1;
+        //dualise_cuda_v1<6>(batch);
+        //if (check_graphs()) return 1;
 
 
     }

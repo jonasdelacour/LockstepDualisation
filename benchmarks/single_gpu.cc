@@ -1,4 +1,4 @@
-#include "dual.h"
+#include "cuda_kernels.h"
 #include "cu_array.h"
 #include "util.h"
 #include "fstream"
@@ -36,16 +36,10 @@ int main(int argc, char** argv) {
     int Nf = N/2 + 2;
 
 
-    CuArray<uint16_t> graphs(N_graphs*Nf*6);               //Allocate unified memory to store the batch.
-    CuArray<uint8_t> degrees(N_graphs*Nf);
-    CuArray<uint16_t> out_graphs(N_graphs*N*3);               //Allocate unified memory to store the batch.
+    IsomerBatch<float,uint16_t> batch(N, N_graphs);
 
-    fill(graphs, degrees, Nf, N_graphs);
+    fill(batch);
     LaunchCtx ctx(0);
-
-    graphs.to_device(0);                                  //Copy the batch to the device.
-    degrees.to_device(0);                                 //Copy the degrees to the device.
-    out_graphs.to_device(0);                                 //Copy the degrees to the device.
 
     std::vector<double> times(N_runs); //Times in nanoseconds.
     std::vector<double> tdiffs(N_runs); //Timing differences in nanoseconds.
@@ -57,10 +51,10 @@ int main(int argc, char** argv) {
         switch (version)
         {
         case 0:
-            dualise_V0<6>(graphs, degrees, out_graphs, Nf, N_graphs, ctx, LaunchPolicy::ASYNC);    //Dualise the batch.
+            dualise_cuda_v0<6>(batch, ctx, LaunchPolicy::ASYNC);    //Dualise the batch.
             break;
         case 1:
-            dualise_V1<6>(graphs, degrees, out_graphs, Nf, N_graphs, ctx, LaunchPolicy::ASYNC);    //Dualise the batch.
+            dualise_cuda_v1<6>(batch, ctx, LaunchPolicy::ASYNC);    //Dualise the batch.
             break;
         default:
             break;

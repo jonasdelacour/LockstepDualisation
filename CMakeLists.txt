@@ -14,7 +14,18 @@ project(Dualisation)
 
 include(CheckLanguage)
 check_language(CUDA)
-#set(CMAKE_CXX_COMPILER "/opt/nvidia/hpc_sdk/Linux_x86_64/22.11/compilers/bin/nvc++")
+find_program(ICPX_COMPILER icpx)
+if(ICPX_COMPILER)
+  set(SYCL_INCLUDE_DIR "/opt/intel/oneapi/compiler/2023.2.1/linux/include/sycl:/opt/intel/oneapi/compiler/2023.2.1/linux/include")
+  message("Using ICPX compiler at ${ICPX_COMPILER}")
+endif()
+
+set(ICPX_FLAGS "-fsycl -Xcuda-ptxas --verbose")
+set(CMAKE_CXX_FLAGS "-std=c++17 -O3 -fPIC -m64 -pthread -fopenmp -g")
+
+include_directories(AFTER SYSTEM include)
+include_directories(include)
+include_directories(external/fullerenes/include)
 
 if(CMAKE_CUDA_COMPILER)
   message("CUDA version: ${CUDA_VERSION}")
@@ -51,5 +62,16 @@ add_subdirectory(src/c++)
 add_subdirectory(external/fullerenes EXCLUDE_FROM_ALL)
 add_subdirectory(benchmarks)
 add_subdirectory(validation)
+
+if(ICPX_COMPILER)
+  set(PREVIOUS_CXX_COMPILER ${CMAKE_CXX_COMPILER})
+  set(ICPX_TARGET_FLAG -fsycl-targets=nvptx64-nvidia-cuda,x86_64)
+  set(ICPX_FLAGS "-fsycl ${ICPX_TARGET_FLAG} -Xcuda-ptxas --verbose -Xcuda-ptxas --maxrregcount=40 -Xcuda-ptxas --generate-line-info")
+  set(CMAKE_CXX_COMPILER ${ICPX_COMPILER})
+  add_subdirectory(src/sycl)
+  add_subdirectory(validation/sycl)
+  add_subdirectory(benchmarks/sycl)
+  set(CMAKE_CXX_COMPILER ${PREVIOUS_CXX_COMPILER})
+endif()
 
 
