@@ -1,0 +1,8 @@
+#set_source_files_properties(forcefield.cc   PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -fPIC ${ICPX_FLAGS}")
+set_source_files_properties(dual.cc      PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -fPIC ${ICPX_FLAGS}")
+set_source_files_properties(util.cc     PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -fPIC ${ICPX_FLAGS}")
+#set_source_files_properties(tutte.cc        PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -fPIC ${ICPX_FLAGS}")
+#set_source_files_properties(projection.cc   PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -fPIC ${ICPX_FLAGS}")
+#set_source_files_properties(forcefield.cc   PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -fPIC ${ICPX_FLAGS}")
+set_source_files_properties(isomer_batch.cc PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -fPIC ${ICPX_FLAGS}")
+add_library(sycl_fullerene dual.cc util.cc isomer_batch.cc)

@@ -2,26 +2,26 @@
 #include <cooperative_groups.h>
 #include <cooperative_groups/reduce.h>
 #include <cooperative_groups/scan.h>
-#include "dual.h"
+#include "cuda_kernels.h"
 #include "cu_array.h"
 #include "iostream"
 typedef ushort2 edge_t;
 namespace cg = cooperative_groups;
 
 //Declare all the template instantiations that you require: This one is for fullerene graphs specifically.
-template void dualise_V0<6>(const CuArray<d_node_t>&, const CuArray<uint8_t>&, CuArray<d_node_t>&, const int, const int, const LaunchCtx&, const LaunchPolicy);
-template void dualise_V1<6>(const CuArray<d_node_t>&, const CuArray<uint8_t>&, CuArray<d_node_t>&, const int, const int, const LaunchCtx&, const LaunchPolicy);
 
+template void dualise_cuda_v0<6>(IsomerBatch<float,uint16_t>& B, const LaunchCtx&, const LaunchPolicy);
+template void dualise_cuda_v1<6>(IsomerBatch<float,uint16_t>& B, const LaunchCtx&, const LaunchPolicy);
 
 template<int MaxDegree>
 struct DeviceDualGraph{
     const d_node_t* dual_neighbours;                          //(Nf x MaxDegree)
-    const uint8_t* face_degrees;                            //(Nf x 1)
+    const d_node_t* face_degrees;                            //(Nf x 1)
     
-    __device__ DeviceDualGraph(const d_node_t* dual_neighbours, const uint8_t* face_degrees) : dual_neighbours(dual_neighbours), face_degrees(face_degrees) {}
+    __device__ DeviceDualGraph(const d_node_t* dual_neighbours, const d_node_t* face_degrees) : dual_neighbours(dual_neighbours), face_degrees(face_degrees) {}
 
     __inline__ __device__ d_node_t dedge_ix(const d_node_t u, const d_node_t v) const{
-        for (uint8_t j = 0; j < face_degrees[u]; j++){
+        for (d_node_t j = 0; j < face_degrees[u]; j++){
             if (dual_neighbours[u*MaxDegree + j] == v) return j;
         }
 
@@ -169,14 +169,14 @@ template <typename T> __device__ void ex_scan(T* sdata, const T data, int n){
 
 template <int MaxDegree>
 __global__
-void dualise_V0_(const d_node_t* G_in, const uint8_t* deg, d_node_t* G_out , const int N_f,  const int N_graphs){
+void dualise_V0_(const d_node_t* G_in, const d_node_t* deg, d_node_t* G_out , const int N_f,  const int N_graphs){
     auto N_t = 2*(N_f - 2);
     size_t smem_len = max(N_f,N_t)+max(32,N_t>>5)+1;
 
     extern __shared__  d_node_t sharedmem[];
     d_node_t* triangle_numbers = reinterpret_cast<d_node_t*>(sharedmem);
     d_node_t* cached_neighbours = triangle_numbers + N_f*MaxDegree;
-    uint8_t* cached_degrees = reinterpret_cast<uint8_t*>(cached_neighbours+ N_f*MaxDegree);
+    d_node_t* cached_degrees = reinterpret_cast<d_node_t*>(cached_neighbours+ N_f*MaxDegree);
     d_node_t* smem = reinterpret_cast<d_node_t*>(cached_neighbours) + N_f*(MaxDegree + 1) ;
     //Align smem to 32 bytes
     smem = (d_node_t*)(((uintptr_t)smem + 31) & ~31);
@@ -242,13 +242,13 @@ void dualise_V0_(const d_node_t* G_in, const uint8_t* deg, d_node_t* G_out , con
 
 template <int MaxDegree>
 __global__
-void dualise_V1_(const d_node_t* G_in, const uint8_t* deg, d_node_t* G_out , const int N_f,  const int N_graphs){
+void dualise_V1_(const d_node_t* G_in, const d_node_t* deg, d_node_t* G_out , const int N_f,  const int N_graphs){
     auto N_t = 2*(N_f - 2);
     size_t smem_len = max(N_f,N_t)+max(32,N_f>>5)+1;
     extern __shared__  d_node_t sharedmem[];
     d_node_t* triangle_numbers = reinterpret_cast<d_node_t*>(sharedmem); // 0,....,Nf*MaxDegree*2 (in bytes)
     d_node_t* cached_neighbours = triangle_numbers + N_f*MaxDegree;      // Nf*MaxDegree*2+1,...,Nf*MaxDegree*4?
-    uint8_t* cached_degrees = reinterpret_cast<uint8_t*>(cached_neighbours + N_f*MaxDegree); // Nf*MaxDegree*4,...,Nf*MaxDegree*4+Nf
+    d_node_t* cached_degrees = reinterpret_cast<d_node_t*>(cached_neighbours + N_f*MaxDegree); // Nf*MaxDegree*4,...,Nf*MaxDegree*4+Nf
     d_node_t* smem = reinterpret_cast<d_node_t*>(cached_neighbours) + N_f*(MaxDegree + 1);   // Nf*MaxDegree*4+2*Nf+1,...,Nf*(MaxDegree*4)+2*Nf+2*N?
     //Align smem to 32 bytes
     smem = (d_node_t*)(((uintptr_t)smem + 31) & ~31);
@@ -312,12 +312,13 @@ void dualise_V1_(const d_node_t* G_in, const uint8_t* deg, d_node_t* G_out , con
     }
 }
 
-template <int MaxDegree>
-void dualise_V0(const CuArray<d_node_t>& G_in, const CuArray<uint8_t>& deg,  CuArray<d_node_t>& G_out , const int N_f,  const int N_graphs, const LaunchCtx& ctx, const LaunchPolicy policy){
+template <int MaxDegree, typename T, typename K>
+void dualise_cuda_v0(IsomerBatch<T,K>& B,const LaunchCtx& ctx, const LaunchPolicy policy){
     cudaSetDevice(ctx.get_device_id());
-    auto N_t = 2*(N_f - 2);
-    size_t local_smem_len = max(N_f,N_t)+max(32,N_t>>5)+1;
-    
+    auto N_t = B.n_atoms;
+    auto N_f = B.n_faces;
+    auto N_graphs = B.m_capacity;
+    size_t local_smem_len = std::max((size_t)N_f,(size_t)N_t)+std::max((size_t)32,(size_t)(N_t>>5))+1;
     size_t smem = sizeof(d_node_t)*(N_f*MaxDegree*2 + 2*N_f + local_smem_len) + 128; 
 
     static int n_blocks = 0; 
@@ -332,7 +333,7 @@ void dualise_V0(const CuArray<d_node_t>& G_in, const CuArray<uint8_t>& deg,  CuA
         n_blocks *= prop.multiProcessorCount;
     }
 
-    void* kargs[]{(void*)&G_in.data, (void*)&deg.data, (void*)&G_out.data, (void*)&N_f, (void*)&N_graphs};
+    void* kargs[]{(void*)&B.dual_neighbours, (void*)&B.face_degrees, (void*)&B.cubic_neighbours, (void*)&N_f, (void*)&N_graphs};
     if (policy == LaunchPolicy::SYNC) cudaStreamSynchronize(ctx.stream);
         if(prop.cooperativeLaunch == 1) cudaLaunchCooperativeKernel((void*)dualise_V0_<MaxDegree>, n_blocks, N_t, kargs, smem, ctx.stream);
         else cudaLaunchKernel((void*)dualise_V0_<MaxDegree>, n_blocks, N_t, kargs, smem, ctx.stream);
@@ -341,11 +342,13 @@ void dualise_V0(const CuArray<d_node_t>& G_in, const CuArray<uint8_t>& deg,  CuA
     if (err != cudaSuccess) std::cout << "Last cuda error: " << cudaGetErrorString(err) << std::endl;
 }
 
-template <int MaxDegree>
-void dualise_V1(const CuArray<d_node_t>& G_in, const CuArray<uint8_t>& deg,  CuArray<d_node_t>& G_out , const int N_f,  const int N_graphs, const LaunchCtx& ctx, const LaunchPolicy policy){
+template <int MaxDegree, typename T, typename K>
+void dualise_cuda_v1(IsomerBatch<T,K>& B, const LaunchCtx& ctx, const LaunchPolicy policy){
     cudaSetDevice(ctx.get_device_id());
-    auto N_t = 2*(N_f - 2);        
-    size_t local_smem_len = max(N_f,N_t)+max(32,N_f>>5)+1;
+    auto N_t = B.n_atoms;
+    auto N_f = B.n_faces;
+    auto N_graphs = B.m_capacity;
+    size_t local_smem_len = std::max((size_t)N_f,(size_t)N_t)+std::max((size_t)32,(size_t)(N_f>>5))+1;
     size_t smem = sizeof(d_node_t)*(N_f*MaxDegree*2 + 2*N_f + local_smem_len) + 128;
     
     int lcm = (N_f + 31) & ~31; //Round up to nearest multiple of 32 [Warp Size] (Least Common Multiple)
@@ -361,12 +364,14 @@ void dualise_V1(const CuArray<d_node_t>& G_in, const CuArray<uint8_t>& deg,  CuA
         n_blocks *= prop.multiProcessorCount;
     }
 
-    void* kargs[]{(void*)&G_in.data, (void*)&deg.data, (void*)&G_out.data, (void*)&N_f, (void*)&N_graphs};
+    void* kargs[]{(void*)&B.dual_neighbours, (void*)&B.face_degrees, (void*)&B.cubic_neighbours, (void*)&N_f, (void*)&N_graphs};
     if (policy == LaunchPolicy::SYNC) cudaStreamSynchronize(ctx.stream);
         if(prop.cooperativeLaunch == 1) cudaLaunchCooperativeKernel((void*)dualise_V1_<MaxDegree>, n_blocks, lcm, kargs, smem, ctx.stream);
         else cudaLaunchKernel((void*)dualise_V1_<MaxDegree>, n_blocks, lcm, kargs, smem, ctx.stream);
     if (policy == LaunchPolicy::SYNC) cudaStreamSynchronize(ctx.stream);
 }
+
+
 
 //TODO: Implement a large-overhead version of dualise which implicitly allocates memory, copies data, launches the kernel and copies the result back to the host
 

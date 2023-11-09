@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include "random"
 #include "numeric"
+#define CPPBATCH
 #include "util.h"
 
 using namespace chrono;

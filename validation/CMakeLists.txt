@@ -3,5 +3,5 @@ target_link_libraries(omp_validation cpp_lib fullerenes)
 
 if(CMAKE_CUDA_COMPILER)
     add_executable(gpu_validation gpu_validation.cc)
-    target_link_libraries(gpu_validation cpp_lib cuda_lib fullerenes)
+    target_link_libraries(gpu_validation cuda_lib fullerenes)
 endif()

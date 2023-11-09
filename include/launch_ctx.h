@@ -2,7 +2,6 @@
 #include "cuda_runtime_api.h"
 #include "unordered_map"
 #include "chrono"
-enum class LaunchPolicy {SYNC, ASYNC};
 
 class LaunchCtx
 {
