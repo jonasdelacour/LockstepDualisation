@@ -1,32 +1,22 @@
-ifeq ($(shell which nvcc),) # No 'nvcc' found
-HAS_GPU=false
-else
-HAS_GPU=true
-endif
+MPICXX=/usr/bin/mpic++
+MPIRUN=/usr/bin/mpirun
+HOSTS=-host threadripper00:32,threadripper01:32
+PWD=$(shell pwd)
+BASEDIR=$(shell dirname $$PWD)
 
-.PHONY: build
-build:
-	git submodule update --init
-	mkdir -p build
-	cd build && cmake .. && make -j
+CUDA_LIB_PATH=$(PWD)/build/src/cuda
+CUDA_LIB=-L$(CUDA_LIB_PATH) -lcuda_lib
+CPP_LIB=-L$(PWD)/build/src/c++ -lcpp_lib
+INCLUDES=-I$(PWD)/include/
 
-.PHONY: all
-all: build benchmarks validation
+all: build run
 
-.PHONY: benchmarks
-benchmarks: build
-	python3 benchmarks.py
+build: mpi_hello_world.cpp
+	$(MPICXX) -o mpi_hello_world mpi_hello_world.cpp $(INCLUDES) $(CUDA_LIB) -I /opt/nvidia/hpc_sdk/Linux_x86_64/2022/cuda/11.8/include/
+	rsync -r $(PWD) threadripper01:$(BASEDIR)
 
-.PHONY: validation
-ifeq ($(HAS_GPU), true)
-validation: build
-	build/validation/omp_validation
-	build/validation/gpu_validation
-else
-validation: build
-	build/validation/omp_validation
-endif
+run: mpi_hello_world host_file
+	$(MPIRUN) -hostfile host_file $(HOSTS) -mca btl_tcp_if_include enp8s0 -mca btl_tcp_if_exclude,lo docker0 -N 1 $(PWD)/mpi_hello_world 200 1000000 20 1 1 
 
-.PHONY: clean
 clean:
-	rm -rf build/
+	rm -f mpi_hello_world
