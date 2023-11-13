@@ -45,8 +45,6 @@ set(CMAKE_CXX_STANDARD 17)
 #elseif(CMAKE_CXX_COMPILER_ID MATCHES "NVIDIA")
 #endif()
 
-set(CMAKE_CXX_FLAGS "-std=c++17 -O3 -mp=gpu")
-
 include_directories(AFTER SYSTEM include)
 include_directories(include)
 include_directories(external/fullerenes/include)
