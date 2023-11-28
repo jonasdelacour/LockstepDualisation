@@ -1,4 +1,4 @@
-#include <CL/sycl.hpp>
+#include "sycl_kernels.h"
 #include "numeric"
 #include <vector>
 #include <tuple>
@@ -1803,22 +1803,22 @@ struct ForceField
 };
 
 template <ForcefieldType FFT, typename T, typename K>
-void forcefield_optimise(sycl::queue &Q, IsomerBatch<T, K>& B, const int iterations, const int max_iterations, const LaunchPolicy policy)
+void forcefield_optimise_sycl(sycl::queue &Q, IsomerBatch<T, K>& B, const int iterations, const int max_iterations, const LaunchPolicy policy)
 {   
     TEMPLATE_TYPEDEFS(T, K);
-    auto local_mem_bytes_required = B.N() * 3 * sizeof(coord3d) + B.N() * 2 * sizeof(T);
+    auto local_mem_bytes_required = B.n_atoms * 3 * sizeof(coord3d) + B.n_atoms * 2 * sizeof(T);
     assert(Q.get_device().get_info<sycl::info::device::local_mem_size>() >= local_mem_bytes_required);
     if (policy == LaunchPolicy::SYNC) Q.wait_and_throw();
     Q.submit([&](sycl::handler &h)
              {
-        sycl::local_accessor<T,1> sdata(B.N()*2, h);
-        sycl::local_accessor<coord3d,1> X(B.N(),h);
-        sycl::local_accessor<coord3d,1> X1(B.N(),h);
-        sycl::local_accessor<coord3d,1> X2(B.N(),h);
+        sycl::local_accessor<T,1> sdata(B.n_atoms*2, h);
+        sycl::local_accessor<coord3d,1> X(B.n_atoms,h);
+        sycl::local_accessor<coord3d,1> X1(B.n_atoms,h);
+        sycl::local_accessor<coord3d,1> X2(B.n_atoms,h);
         sycl::accessor X_acc(B.X, h);
         sycl::accessor cubic_neighbours_acc(B.cubic_neighbours, h, sycl::read_only);
-        auto N = B.N();
-        h.parallel_for<class optimize>(sycl::nd_range(sycl::range{B.N()*B.capacity()}, sycl::range{B.N()}), [=](sycl::nd_item<1> nditem) {
+        auto N = B.n_atoms;
+        h.parallel_for<class optimize>(sycl::nd_range(sycl::range{B.n_atoms*B.m_capacity}, sycl::range{B.n_atoms}), [=](sycl::nd_item<1> nditem) {
             auto cta = nditem.get_group();
             auto tid = nditem.get_local_linear_id();
             auto bid = nditem.get_group_linear_id();
@@ -1839,7 +1839,7 @@ void forcefield_optimise(sycl::queue &Q, IsomerBatch<T, K>& B, const int iterati
     if (policy == LaunchPolicy::SYNC) Q.wait_and_throw();
 }
 
-template void forcefield_optimise<PEDERSEN,float,uint16_t>(sycl::queue &Q, IsomerBatch<float, uint16_t>& B, const int iterations, const int max_iterations, const LaunchPolicy policy);
+template void forcefield_optimise_sycl<PEDERSEN,float,uint16_t>(sycl::queue &Q, IsomerBatch<float, uint16_t>& B, const int iterations, const int max_iterations, const LaunchPolicy policy);
 
 
 /* int main(int argc, char const *argv[])
@@ -1858,16 +1858,16 @@ template void forcefield_optimise<PEDERSEN,float,uint16_t>(sycl::queue &Q, Isome
     // Import starting geometry from file.
     std::ifstream geom_file("starting_geometry.float32");
     std::ifstream graph_file("cubic_graphs.uint16");
-    std::vector<coord3d> starting_geom(B.N() * B.capacity());
-    std::vector<node_t> graph(B.N() * B.capacity() * 3);
-    geom_file.read(reinterpret_cast<char *>(starting_geom.data()), B.N() * B.capacity() * sizeof(coord3d));
-    graph_file.read(reinterpret_cast<char *>(graph.data()), B.N() * B.capacity() * sizeof(node3));
+    std::vector<coord3d> starting_geom(B.n_atoms * B.m_capacity);
+    std::vector<node_t> graph(B.n_atoms * B.m_capacity * 3);
+    geom_file.read(reinterpret_cast<char *>(starting_geom.data()), B.n_atoms * B.m_capacity * sizeof(coord3d));
+    graph_file.read(reinterpret_cast<char *>(graph.data()), B.n_atoms * B.m_capacity * sizeof(node3));
     copy(B.X, (coord3d*)starting_geom.data());
     copy(B.cubic_neighbours, graph.data());
     forcefield_optimise<PEDERSEN>(Q, B, 3 * N, 3 * N);
     Q.wait_and_throw();
-    std::vector<coord3d> X(B.N() * B.capacity());
-    coord3d *h_X = sycl::malloc_host<coord3d>(B.N() * B.capacity() * 3, Q);
+    std::vector<coord3d> X(B.n_atoms * B.m_capacity);
+    coord3d *h_X = sycl::malloc_host<coord3d>(B.n_atoms * B.m_capacity * 3, Q);
     copy(h_X, B.X);
     
 
@@ -1880,7 +1880,7 @@ template void forcefield_optimise<PEDERSEN,float,uint16_t>(sycl::queue &Q, Isome
     //}
 //
     std::cout << "Optimized Geometry: \n";
-    for (size_t i = 0; i < B.N() * 3; i++)
+    for (size_t i = 0; i < B.n_atoms * 3; i++)
     {
         std::cout << reinterpret_cast<real_t*>(h_X)[i] << ", ";
     }

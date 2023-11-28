@@ -52,10 +52,15 @@ const std::unordered_map<size_t,size_t> num_fullerenes = {
     {390,104453597992}, {392,109837310021}, {394,114722988623},
     {396,120585261143}, {398,125873325588}, {400,132247999328}};
 
-int main() {
+int main(int argc, char** argv) {
     std::cout << "Validating GPU implementations." << std::endl;
-    auto Q = sycl::queue(sycl::cpu_selector_v);
-    for (int N = 20; N <= 200; N+=2) {
+    std::string device_type = argc > 1 ? argv[1] : "cpu";
+    auto start_range = argc > 2 ? std::stoi(argv[2]) : 20;
+    auto end_range = argc > 3 ? std::stoi(argv[3]) : 200;
+    std::transform(device_type.begin(), device_type.end(), device_type.begin(), ::tolower);
+    auto selector =  device_type == "cpu" ? sycl::cpu_selector_v : sycl::gpu_selector_v;
+    auto Q = sycl::queue(selector);
+    for (int N = start_range; N <= end_range; N+=2) {
         if (N == 22) continue;
         std::cout << "N = " << N << std::endl;
         int Nf = N/2 + 2;
@@ -112,6 +117,9 @@ int main() {
         };
 
         dualise_sycl_v0<6>(Q, batch);
+        tutte_layout_sycl(Q, batch);
+        spherical_projection_sycl(Q, batch);
+        forcefield_optimise_sycl<ForcefieldType::PEDERSEN>(Q, batch, N*5, N*5);
         if (check_graphs()) return 1;
         //dualise_cuda_v1<6>(batch);
         //if (check_graphs()) return 1;
