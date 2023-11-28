@@ -9,6 +9,7 @@ if(ICPX_COMPILER)
         -O3
         -fsycl
         "SHELL:${ICPX_TARGET_FLAG}"
-        "SHELL:-Xcuda-ptxas --maxrregcount=40"
+        "SHELL:-Xcuda-ptxas --maxrregcount=80"
+        "SHELL:-Xcuda-ptxas --verbose"
     )
 endif()
