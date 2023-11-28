@@ -35,6 +35,7 @@ void fill(IsomerBatch<T,K>& B, int set_div,int offset) {
     int N_graphs = B.m_capacity;
     auto face_degrees_acc = host_accessor(B.face_degrees);
     auto dual_neighbours_acc = host_accessor(B.dual_neighbours);
+    auto statuses_acc = host_accessor(B.statuses);
 
 
     const std::string path = cwd() + "/isomerspace_samples/dual_layout_" + std::to_string(N) + "_seed_42";
@@ -46,6 +47,7 @@ void fill(IsomerBatch<T,K>& B, int set_div,int offset) {
     samples.read((char*)in_buffer.data(), n_samples*Nf*6*sizeof(uint16_t));         //Read all the samples into the buffer.
 
     for(int i = 0; i < N_graphs; i++) {                  //Copy the first N_graphs samples into the batch.
+      statuses_acc[i] = IsomerStatus::NOT_CONVERGED;
       for(int j = 0; j < Nf; j++) {
         for(int k = 0; k < 6; k++) {
     	dual_neighbours_acc[i*Nf*6 + j*6 + k] = in_buffer[(i%(n_samples/set_div) + offset)*Nf*6 + j*6 + k];
