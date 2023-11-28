@@ -94,6 +94,7 @@ void fill(IsomerBatch<T,K>& B, int set_div, int offset) {
   samples.read((char*)in_buffer.data(), n_samples*Nf*6*sizeof(K));         //Read all the samples into the buffer.
 
   for(int i = 0; i < N_graphs; i++) {                  //Copy the first N_graphs samples into the batch.
+    B.statuses[i] = IsomerStatus::NOT_CONVERGED;
     for(int j = 0; j < Nf; j++) {
       for(int k = 0; k < 6; k++) {
 	      (B.dual_neighbours).at(i*Nf*6 + j*6 + k) = in_buffer[(i%n_samples)*Nf*6 + j*6 + k];
