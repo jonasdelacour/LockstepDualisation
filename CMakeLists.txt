@@ -1,6 +1,18 @@
 #Set Up CMake
+project(LockstepDualisation)
 
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.5)
+include(CheckLanguage)
+include(CMakeDependentOption)
+
+set(CMAKE_GENERATOR "Unix Makefiles" CACHE INTERNAL "" FORCE)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+
+# Make external fullerene package use a Fortran compiler that works.
+set(CMAKE_Fortran_COMPILER gfortran CACHE STRING "Fortran compiler") # Default to GNU Fortran (e.g. Cray Fortran breaks currently)
+check_language(fortran)
 
 if (${APPLE}) # Mac OS X
     # Change to use brew gcc rather than clang
@@ -8,23 +20,80 @@ if (${APPLE}) # Mac OS X
     set(CMAKE_CXX_COMPILER "g++-12")
 endif()
 
-project(Dualisation)
+#--------- CROSS-ARCHITECTURE GPU HANDLING -----
+set(GPU_MAXREGCOUNT 80 CACHE STRING "Control GPU register pressure vs. occupancy")
 
-
-
-include(CheckLanguage)
+# Do we have CUDA compilers?
 check_language(CUDA)
-find_program(ICPX_COMPILER icpx)
-if(ICPX_COMPILER)
-  set(SYCL_INCLUDE_DIR "/opt/intel/oneapi/compiler/2023.2.1/linux/include/sycl:/opt/intel/oneapi/compiler/2023.2.1/linux/include")
-  message("Using ICPX compiler at ${ICPX_COMPILER}")
+# Do we want to build CUDA?
+cmake_dependent_option(ENABLE_CUDA "Build CUDA GPU code" ON "CMAKE_CUDA_COMPILER" OFF)
+if(CMAKE_CUDA_COMPILER)
+  message("Found CUDA compiler: ${CMAKE_CUDA_COMPILER}")
+  set(CMAKE_CUDA_ARCHITECTURES 86 CACHE INTEGER "Architecture for your NVIDIA GPU: 50|60|70|75|80|86|89|90. See https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/")
+else()
+  message("Could not find CUDA compiler.")
 endif()
 
-set(ICPX_FLAGS "-fsycl -Xcuda-ptxas --verbose")
-set(CMAKE_CXX_FLAGS "-std=c++17 -O3 -fPIC -m64 -pthread -fopenmp -g")
+# Can we do a SYCL? Find icpx or SYCL-enabled clang.
+find_program(SYCL_LS sycl-ls)
+if(SYCL_LS)
+  get_filename_component(SYCL_BIN_DIR ${SYCL_LS} DIRECTORY)
+  set(SYCL_DIR ${SYCL_BIN_DIR}/../)
+  find_program(DPCPP_COMPILER NAMES ${SYCL_BIN_DIR}/icpx ${SYCL_BIN_DIR}/clang++)
+  
+  if(DPCPP_COMPILER)
+    message("Found dpc++ compiler: ${DPCPP_COMPILER}")
+  else()
+    message("Could not find dpc++ compiler")
+  endif()
+endif()
+# Do we want to build SYCL?
+cmake_dependent_option(ENABLE_SYCL "Build SYCL GPU code" ON "DPCPP_COMPILER" OFF)    
+
+# If we want to build SYCL, we need to set up some command line options
+# that depend on the target architecture.
+if(ENABLE_SYCL)
+  if(CMAKE_CUDA_COMPILER)
+    set(SYCL_DEFAULT_TARGET "NVIDIA")
+  else()
+    set(SYCL_DEFAULT_TARGET "AMD")
+  endif()
+  
+  set(SYCL_TARGETS ${SYCL_DEFAULT_TARGET} CACHE STRING "AMD|NVIDIA|X86 (Currently only single target supported.") # TODO: Multi-target compiles.
+  message("SYCL compile enabled with ${SYCL_TARGETS} target")
+
+  set(DPCPP_FLAGS "-O3 -fsycl -fsycl-unnamed-lambda") # Use regardless of target.
+  
+  if(SYCL_TARGETS STREQUAL "AMD") 
+    set(DPCPP_TARGET_FLAGS "-fsycl-targets=amdgcn-amd-amdhsa,x86_64 -Xsycl-target-backend=amdgcn-amd-amdhsa --offload-arch=gfx90a -march=native")
+  elseif(SYCL_TARGETS STREQUAL "NVIDIA")
+    set(PTXAS_COMPILE_FLAGS    " --verbose -g --maxrregcount=${GPU_MAXREGCOUNT} --opt-level=3 --generate-line-info --warn-on-double-precision-use --warn-on-spills")
+    set(PTXAS_LINK_FLAGS
+    "SHELL:-Xcuda-ptxas --verbose"
+    "SHELL:-Xcuda-ptxas --maxrregcount=80"
+    "SHELL:-Xcuda-ptxas --opt-level=3"
+    "SHELL:-Xcuda-ptxas --generate-line-info"
+    "SHELL:-Xcuda-ptxas --warn-on-double-precision-use"
+    "SHELL:-Xcuda-ptxas --warn-on-spills"
+    "SHELL:-Xcuda-ptxas --generate-line-info")
+    
+    set(DPCPP_TARGET_FLAGS "-fsycl-targets=nvptx64-nvidia-cuda,x86_64 -Xsycl-target-backend=nvptx64-nvidia-cuda --offload-arch=sm_${CMAKE_CUDA_ARCHITECTURES}")
+    set(DPCPP_FLAGS       "${DPCPP_FLAGS} -Xcuda-ptxas '${PTXAS_COMPILE_FLAGS}'")
+    set(DPCPP_LINK_FLAGS   "-O3 -fsycl -fsycl-unnamed-lambda ${DPCPP_TARGET_FLAGS}")    
+  elseif(SYCL_TARGETS STREQUAL "X86")
+    set(DPCPP_TARGET_FLAGS "-fsycl-targets=x86_64 -march=native -mcpu=native -Xsycl-target-backend=x86_64 -mcpu=native")
+  endif()
+
+  set(DPCPP_INCLUDE ${SYCL_DIR}/include)  
+  set(DPCPP_FLAGS "${DPCPP_FLAGS} -fsycl -fsycl-unnamed-lambda ${DPCPP_TARGET_FLAGS} -I${DPCPP_INCLUDE} -I${DPCPP_INCLUDE}/sycl")
+
+endif()
+
+
+# ----------------------------------------------
 
 include_directories(AFTER SYSTEM include)
-include_directories(include)
+include_directories(AFTER SYSTEM ${CMAKE_BINARY_DIR}/include)
 include_directories(external/fullerenes/include)
 
 if(CMAKE_CUDA_COMPILER)
@@ -37,22 +106,9 @@ if(CMAKE_CUDA_COMPILER)
   message("CUDA include path at: ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
   message("CUDA ARCHITECTURES: ${CUDA_ARCHITECTURES}")
   
-endif()
-set(CMAKE_CXX_STANDARD 17)
-##Check if compiler is g++ or gcc and if so, set flags, else if nvc++ set different flags
-#if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
-#    set(CMAKE_CXX_FLAGS "-std=c++17 -O3 -fPIC -m64 -pthread -fopenmp")
-#elseif(CMAKE_CXX_COMPILER_ID MATCHES "NVIDIA")
-#endif()
-
-include_directories(AFTER SYSTEM include)
-include_directories(include)
-include_directories(external/fullerenes/include)
-
-if(CMAKE_CUDA_COMPILER)
-    set(CUDA_INCLUDE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
-    set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -I${CUDA_INCLUDE} -DCUDA_ENABLED")
-    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --generate-line-info -std=c++17 --use_fast_math --fmad true --ftz true --maxrregcount=40 -Xptxas -v --resource-usage -arch native -I${CUDA_INCLUDE} -DCUDA_ENABLED")
+  set(CUDA_INCLUDE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+  set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -I${CUDA_INCLUDE} -DCUDA_ENABLED")
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --generate-line-info -std=c++${CMAKE_CXX_STANDARD} --use_fast_math --fmad true --ftz true --maxrregcount=${GPU_MAXREGCOUNT} -Xptxas -v --resource-usage -arch native -I${CUDA_INCLUDE} -DCUDA_ENABLED")
     add_subdirectory(src/cuda)
 endif()
 
@@ -61,15 +117,13 @@ add_subdirectory(external/fullerenes EXCLUDE_FROM_ALL)
 add_subdirectory(benchmarks)
 add_subdirectory(validation)
 
-if(ICPX_COMPILER)
+if(DPCPP_COMPILER)
   set(PREVIOUS_CXX_COMPILER ${CMAKE_CXX_COMPILER})
-  set(ICPX_TARGET_FLAG -fsycl-targets=nvptx64-nvidia-cuda,x86_64)
-  set(ICPX_FLAGS "-fsycl ${ICPX_TARGET_FLAG} -Xcuda-ptxas --verbose -Xcuda-ptxas --maxrregcount=80 -Xcuda-ptxas --generate-line-info")
-  set(CMAKE_CXX_COMPILER ${ICPX_COMPILER})
+  set(CMAKE_CXX_COMPILER    ${DPCPP_COMPILER})
   add_subdirectory(src/sycl)
   add_subdirectory(validation/sycl)
   add_subdirectory(benchmarks/sycl)
-  set(CMAKE_CXX_COMPILER ${PREVIOUS_CXX_COMPILER})
+  set(CMAKE_CXX_COMPILER   ${PREVIOUS_CXX_COMPILER})
 endif()
 
 
