@@ -12,12 +12,14 @@ using namespace sycl;
 
 
 #define UINT_TYPE_MAX std::numeric_limits<UINT_TYPE>::max()
+#define EMPTY_NODE()  std::numeric_limits<node_t>::max()
 
 template<int MaxDegree, typename K>
 struct DeviceDualGraph{
     //Check that K is integral
     INT_TYPEDEFS(K);
 
+  
     const K* dual_neighbours;                          //(Nf x MaxDegree)
     const K* face_degrees;                            //(Nf x 1)
     
@@ -93,6 +95,7 @@ struct DeviceDualGraph{
 template <int MaxDegree, typename T, typename K>
 void dualise_sycl_v0(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy policy){
     INT_TYPEDEFS(K);
+    
     if(policy == LaunchPolicy::SYNC) Q.wait();
     Q.submit([&](handler &h) {
         auto N = batch.n_atoms;
@@ -127,7 +130,7 @@ void dualise_sycl_v0(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
             
             
             DeviceDualGraph<MaxDegree, node_t> FD(cached_neighbours.get_pointer(), cached_degrees.get_pointer());
-            node_t cannon_arcs[MaxDegree]; memset(cannon_arcs, std::numeric_limits<node_t>::max(), MaxDegree*sizeof(node_t));
+            node_t cannon_arcs[MaxDegree]; for(size_t i=0;i<MaxDegree;i++) cannon_arcs[i] = EMPTY_NODE(); // memset sets bytes, but node_t is multi-byte.
             node_t rep_count  = 0;
             sycl::group_barrier(cta);     
 
@@ -147,7 +150,7 @@ void dualise_sycl_v0(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
             if (thid < Nf){
                 node_t arc_count = 0;
                 for (node_t i = 0; i < FD.face_degrees[thid]; i++){
-                    if(cannon_arcs[i] != std::numeric_limits<node_t>::max()){
+                    if(cannon_arcs[i] != EMPTY_NODE()){
                         triangle_numbers[thid*MaxDegree + i] = scan_result + arc_count;
                         ++arc_count;
                     }    
@@ -157,7 +160,7 @@ void dualise_sycl_v0(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
 
             if (thid < Nf){
                 for (node_t i = 0; i < FD.face_degrees[thid]; i++){
-                    if(cannon_arcs[i] != std::numeric_limits<node_t>::max()){
+                    if(cannon_arcs[i] != EMPTY_NODE()){
                         auto idx = triangle_numbers[thid*MaxDegree + i];
                         arc_list[idx] = {node_t(thid), cannon_arcs[i]};
                     }
@@ -179,6 +182,7 @@ void dualise_sycl_v0(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
 template <int MaxDegree, typename T, typename K>
 void dualise_sycl_v1(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy policy){
     INT_TYPEDEFS(K);
+    
     if(policy == LaunchPolicy::SYNC) Q.wait();
     Q.submit([&](handler &h) {
         auto N = batch.n_atoms;
@@ -213,7 +217,7 @@ void dualise_sycl_v1(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
             
             
             DeviceDualGraph<MaxDegree, node_t> FD(cached_neighbours.get_pointer(), cached_degrees.get_pointer());
-            node_t cannon_arcs[MaxDegree]; memset(cannon_arcs, std::numeric_limits<node_t>::max(), MaxDegree*sizeof(node_t));
+            node_t cannon_arcs[MaxDegree]; for(size_t i=0;i<MaxDegree;i++) cannon_arcs[i] = EMPTY_NODE(); // memset sets bytes, but node_t is multi-byte.
             node_t rep_count  = 0;
             sycl::group_barrier(cta);     
 
@@ -233,7 +237,7 @@ void dualise_sycl_v1(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
             if (thid < Nf){
                 node_t arc_count = 0;
                 for (node_t i = 0; i < FD.face_degrees[thid]; i++){
-                    if(cannon_arcs[i] != std::numeric_limits<node_t>::max()){
+                    if(cannon_arcs[i] != EMPTY_NODE()){
                         triangle_numbers[thid*MaxDegree + i] = scan_result + arc_count;
                         ++arc_count;
                     }    
@@ -243,7 +247,7 @@ void dualise_sycl_v1(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
 
             if (thid < Nf){
                 for (node_t i = 0; i < FD.face_degrees[thid]; i++){
-                    if(cannon_arcs[i] != std::numeric_limits<node_t>::max()){
+                    if(cannon_arcs[i] != EMPTY_NODE()){
                         auto idx = triangle_numbers[thid*MaxDegree + i];
                         arc_list[idx] = {node_t(thid), cannon_arcs[i]};
                     }
