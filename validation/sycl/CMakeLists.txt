@@ -1,15 +1,21 @@
 if(DPCPP_COMPILER)
-    message(STATUS "Using DPCPP compiler: ${CMAKE_CXX_COMPILER}")
-    include_directories(/opt/intel/oneapi/compiler/2023.2.1/linux/include/sycl/CL)
-    set_source_files_properties(sycl_validation.cc PROPERTIES COMPILE_FLAGS "${DPCPP_FLAGS}")
-    add_executable(sycl_validation sycl_validation.cc)
-    target_include_directories(sycl_validation PRIVATE "/opt/intel/oneapi/compiler/2023.2.1/linux/include/sycl" "/opt/intel/oneapi/compiler/2023.2.1/linux/include")
-    target_link_libraries(sycl_validation sycl_fullerene sycl fullerenes)
-    target_link_options(sycl_validation PRIVATE 
-        -O3
-        -fsycl
-        "SHELL:${DPCPP_TARGET_FLAGS}"
-        "SHELL:-Xcuda-ptxas --maxrregcount=80"
-        "SHELL:-Xcuda-ptxas --verbose"
-    )
+set(SYCL_EXECUTABLES
+  sycl_validation
+)
+
+foreach(EXECUTABLE ${SYCL_EXECUTABLES})
+  set_source_files_properties(${EXECUTABLE}.cc PROPERTIES COMPILE_FLAGS "${DPCPP_FLAGS} ${DPCPP_TARGET_FLAGS}")    
+endforeach()
+
+foreach(EXECUTABLE ${SYCL_EXECUTABLES})
+  add_executable(${EXECUTABLE} ${EXECUTABLE}.cc)    
+  target_include_directories(${EXECUTABLE} PRIVATE ${DPCPP_INCLUDE} ${DPCPP_INCLUDE}/sycl)
+  target_link_libraries(${EXECUTABLE} sycl_fullerene sycl fullerenes cpp_lib)
+  target_link_options(${EXECUTABLE} PRIVATE     
+    "SHELL:${DPCPP_LINK_FLAGS}"
+    "SHELL:${DPCPP_FLAGS}"
+    ${PTXAS_LINK_FLAGS}
+  )
+endforeach()
+
 endif()
