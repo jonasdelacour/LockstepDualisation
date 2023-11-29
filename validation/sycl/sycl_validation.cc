@@ -16,7 +16,6 @@ int main(int argc, char** argv) {
       fprintf(stderr, "Syntax: %s <cpu|gpu> [N_start:20] [N_end:200]\n",argv[0]);
       return -1;
     }
-    printf("Validating SYCL implementation for %s device.\n",argv[0]);
     
     std::string device_type = argv[1];
     size_t start_range = argc > 2 ? std::stoi(argv[2]) : 20;
@@ -24,6 +23,10 @@ int main(int argc, char** argv) {
 
     auto selector =  device_type == "cpu" ? sycl::cpu_selector_v : sycl::gpu_selector_v;
     auto Q = sycl::queue(selector);
+
+    printf("Validating SYCL implementation for %s device: %s.\n",
+	   argv[1], Q.get_device().get_info<sycl::info::device::name>().c_str());
+    
     for (size_t N = start_range; N <= end_range; N+=2) {
         if (N == 22) continue;
         std::cout << "N = " << N << std::endl;
