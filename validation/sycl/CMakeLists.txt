@@ -13,7 +13,6 @@ foreach(EXECUTABLE ${SYCL_EXECUTABLES})
   target_link_libraries(${EXECUTABLE} sycl_fullerene sycl fullerenes cpp_lib)
   target_link_options(${EXECUTABLE} PRIVATE     
     "SHELL:${DPCPP_LINK_FLAGS}"
-    "SHELL:${DPCPP_FLAGS}"
     ${PTXAS_LINK_FLAGS}
   )
 endforeach()
