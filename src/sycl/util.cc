@@ -2,6 +2,7 @@
 #include <iostream>
 #include <unistd.h>
 #define SYCLBATCH
+#include "config.hh"
 #include "util.h"
 #include "sycl_kernels.h"
 using namespace sycl;
@@ -38,8 +39,11 @@ void fill(IsomerBatch<T,K>& B, int set_div,int offset) {
     auto statuses_acc = host_accessor(B.statuses);
 
 
-    const std::string path = cwd() + "/isomerspace_samples/dual_layout_" + std::to_string(N) + "_seed_42";
+    const std::string path = std::string(SAMPLES_PATH) + "/dual_layout_" + std::to_string(N) + "_seed_42";
     std::ifstream samples(path, std::ios::binary);         //Open the file containing the samples.
+    if(samples.fail())
+      throw std::runtime_error("Could not open "+path+" for reading.\n");
+    
     int fsize = filesize(samples);                          //Get the size of the file in bytes.
     int n_samples = fsize / (Nf * 6 * sizeof(uint16_t));   //All the graphs are fullerene graphs stored in 16bit unsigned integers.
 
