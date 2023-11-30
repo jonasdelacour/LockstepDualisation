@@ -11,6 +11,8 @@ endif()
 if(CMAKE_CUDA_COMPILER)
     add_executable(single_gpu single_gpu.cc)
     add_executable(multi_gpu multi_gpu.cc)
-    target_link_libraries(single_gpu cuda_lib cpp_lib)
-    target_link_libraries(multi_gpu cuda_lib cpp_lib)
+
+    target_link_libraries(single_gpu cuda_lib cpp_lib fullerenes)
+    target_link_libraries(multi_gpu cuda_lib cpp_lib fullerenes)
 endif()
+
