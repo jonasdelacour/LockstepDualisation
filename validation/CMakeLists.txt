@@ -1,5 +1,7 @@
-add_executable(omp_validation omp_validation.cc)
-target_link_libraries(omp_validation cpp_lib fullerenes)
+if(OpenMP_FOUND)
+  add_executable(omp_validation omp_validation.cc)
+  target_link_libraries(omp_validation cpp_lib fullerenes)
+endif()
 
 if(CMAKE_CUDA_COMPILER)
     add_executable(gpu_validation gpu_validation.cc)
