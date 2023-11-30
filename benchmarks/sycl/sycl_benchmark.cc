@@ -102,9 +102,9 @@ int main(int argc, char** argv) {
             }
             vector<double> t_gpus(N_d);
             for(int j = 0; j < N_d; j++) Qs[j].wait();
-            for(int j = 0; j < N_d; j++) t_gpus[j] =  duration<double,nano>(steady_clock::now() - start_times[j]).count();
-            times[i-N_warmup] = *max_element(t_gpus.begin(), t_gpus.end());
             auto end = steady_clock::now();
+            for(int j = 0; j < N_d; j++) t_gpus[j] =  duration<double,nano>(end - start_times[j]).count();
+            times[i-N_warmup] = *max_element(t_gpus.begin(), t_gpus.end());
             tdiffs[i-N_warmup] = abs(duration<double,nano>(end - start).count()/N_graphs - duration<double,nano>(times[i-N_warmup]).count()/N_graphs);
         } else {
             switch (version)
@@ -118,6 +118,7 @@ int main(int argc, char** argv) {
             default:
                 break;
             }
+            for (int j = 0; j < N_d; j++) Qs[j].wait();
         }
     }
 
@@ -130,6 +131,6 @@ int main(int argc, char** argv) {
     //    << stddev(times)/N_graphs << ","
     //    << mean(tdiffs)/N_graphs << ","
     //    << stddev(tdiffs)/N_graphs << "\n";
-    cout << "Mean Time per Graph: " << mean(times) / N_graphs << " +/- " << stddev(times) / N_graphs << " ns\n";
+    cout << "Mean Time: " << mean(times) << "  Mean Time per Graph: " << mean(times) / N_graphs << " +/- " << stddev(times) / N_graphs << " ns\n";
     return 0;
 }
