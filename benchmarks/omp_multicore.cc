@@ -32,7 +32,7 @@ int main(int argc, char** argv){
     fill(batch);
 
     std::vector<double> times(N_runs); //Times in nanoseconds.
-    _V2::steady_clock::time_point start;
+    std::chrono::steady_clock::time_point start;
     for (size_t i = 0; i < N_runs + N_warmup; i++)
     {
 
