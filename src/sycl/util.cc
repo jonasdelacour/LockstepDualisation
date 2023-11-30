@@ -87,6 +87,7 @@ void bucky_fill(IsomerBatch<T,K>& B, int ntasks, int mytask_id) {
       }
     }
   }
+  BuckyGen::stop(BuckyQ);
   if (num_generated < N_graphs) {
     for (int i = num_generated; i < N_graphs; ++i) {
       statuses_acc[i] = IsomerStatus::NOT_CONVERGED;
