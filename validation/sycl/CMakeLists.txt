@@ -8,7 +8,7 @@ if(DPCPP_COMPILER)
     target_link_options(sycl_validation PRIVATE 
         -O3
         -fsycl
-        "SHELL:${DPCPP_TARGET_FLAG}"
+        "SHELL:${DPCPP_TARGET_FLAGS}"
         "SHELL:-Xcuda-ptxas --maxrregcount=80"
         "SHELL:-Xcuda-ptxas --verbose"
     )
