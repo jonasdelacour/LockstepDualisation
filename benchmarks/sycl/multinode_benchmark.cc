@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include "fstream"
 #include "iostream"
 #include "vector"
@@ -13,6 +14,8 @@ using namespace std::chrono_literals;
 using namespace std::chrono;
 using namespace std;
 
+
+
 int main(int argc, char** argv) {
     // Make user be explicit about which device we want to test, to avoid surprises.
     if(argc < 2 || (string(argv[1]) != "cpu" && string(argv[1]) != "gpu")){
@@ -21,6 +24,13 @@ int main(int argc, char** argv) {
     }
     string device_type = argv[1];
     bool want_gpus = (device_type == "gpu");
+
+    // Mixed argv and environment arguments for MAXIMAL clarity.
+    // Env is for multi-process job control, argv is for program control.
+    const char *N_tasks_ptr    = getenv("N_TASKS");
+    const char *my_task_id_ptr = getenv("MY_TASK_ID");
+    size_t N_tasks = N_tasks_ptr? strtol(N_tasks_ptr,0,0): 1;
+    size_t my_task_id = my_task_id_ptr? strtol(my_task_id_ptr,0,0): 0;
       
     // Parameters for the benchmark run
     int N = argc > 2 ? stoi(argv[2]) : 200;
@@ -95,7 +105,7 @@ int main(int argc, char** argv) {
                 for(int j = 0; j < N_d; j++) dualise_sycl_v0<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);   //Dualise the batch.
                 break;
             case 1:
-                for(int j = 0; j < N_d; j++) {dualise_sycl_v1<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);}    //Dualise the batch.
+                //for(int j = 0; j < N_d; j++) {dualise_sycl_v1<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);}    //Dualise the batch.
                 break;
             default:
                 break;
@@ -113,7 +123,7 @@ int main(int argc, char** argv) {
                 for(int j = 0; j < N_d; j++) dualise_sycl_v0<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);    //Dualise the batch.
                 break;
             case 1:
-                for(int j = 0; j < N_d; j++) dualise_sycl_v1<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);    //Dualise the batch.
+                //for(int j = 0; j < N_d; j++) dualise_sycl_v1<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);    //Dualise the batch.
                 break;
             default:
                 break;

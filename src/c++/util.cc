@@ -12,8 +12,8 @@
 #include "cpp_kernels.h"
 
 
-template float mean(std::vector<float> const& v);
-template double mean(std::vector<double> const& v);
+//template float mean(std::vector<float> const& v);
+//template double mean(std::vector<double> const& v);
 
 template float stddev(std::vector<float> const& data);
 template double stddev(std::vector<double> const& data);
@@ -22,14 +22,18 @@ template void remove_outliers(std::vector<float>& data, int n_sigma);
 template void remove_outliers(std::vector<double>& data, int n_sigma);
 
 template void fill(IsomerBatch<float,uint16_t>& B, int set_div, int offset);
+template void fill(IsomerBatch<double,uint16_t>& B, int set_div, int offset);
 
-template <typename T>
+template void bucky_fill(IsomerBatch<float,uint16_t>& B, int ntasks, int mytask_id);
+template void bucky_fill(IsomerBatch<double,uint16_t>& B, int ntasks, int mytask_id);
+
+/* template <typename T>
 T mean(const std::vector<T>& v) {
   T sum = 0;
   for(size_t i=0;i<v.size();i++) sum += v[i];
   return sum/v.size();
 }
-
+ */
 template<typename T>
 T stddev(const std::vector<T>& data)
 {
@@ -108,3 +112,45 @@ void fill(IsomerBatch<T,K>& B, int set_div, int offset) {
     }
   }
 }
+
+template <typename T, typename K>
+void bucky_fill(IsomerBatch<T,K>& B, int ntasks, int mytask_id) {
+  int N = B.n_atoms;
+  int Nf = B.n_faces;
+  int N_graphs = B.m_capacity;
+
+  BuckyGen::buckygen_queue BuckyQ = BuckyGen::start(N,false,false, mytask_id, ntasks);  
+  Graph G;
+
+  G.neighbours = neighbours_t(Nf, std::vector<node_t>(6));
+  G.N = Nf;
+  int num_generated = 0;
+  for (int i = 0; i < N_graphs; ++i) {
+    bool more_isomers = BuckyGen::next_fullerene(BuckyQ, G);
+    if (!more_isomers) break;
+    num_generated++;
+    B.statuses[i] = IsomerStatus::NOT_CONVERGED;
+    for(int j = 0; j < Nf; j++) {
+      B.face_degrees[i*Nf + j] = G.neighbours[j].size();
+      for(int k = 0; k < G.neighbours[j].size(); k++) {
+        B.dual_neighbours[i*Nf*6 + j*6 + k] = G.neighbours[j][k];
+      }
+    }
+  }
+  BuckyGen::stop(BuckyQ);
+  if (num_generated < N_graphs) {
+    for (int i = num_generated; i < N_graphs; ++i) {
+      B.statuses[i] = IsomerStatus::NOT_CONVERGED;
+      //Repeat the same graphs as already generated.
+      for(int j = 0; j < Nf; j++) {
+        B.face_degrees[i*Nf + j] = B.face_degrees[(i%num_generated)*Nf + j];
+        for(int k = 0; k < 6; k++) {
+          B.dual_neighbours[i*Nf*6 + j*6 + k] = B.dual_neighbours[(i%num_generated)*Nf*6 + j*6 + k];
+        }
+      }
+    }
+  }
+
+}
+
+
