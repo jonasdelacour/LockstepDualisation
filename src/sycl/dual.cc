@@ -247,9 +247,9 @@ void dualise_sycl_v1(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
             //cta.async_work_group_copy(cached_degrees.get_pointer(), face_degrees_dev.get_pointer() + bid*Nf, Nf);
 
             if(thid < Nf){
-                cached_degrees[thid] = face_degrees_dev[bid*Nf + thid];
+                cached_degrees[thid] = face_degrees_dev[isomer_idx*Nf + thid];
                 for (node_t j = 0; j < MaxDegree; j++){
-                    cached_neighbours[thid*MaxDegree + j] = dual_neighbours_dev[bid*Nf*MaxDegree + thid*MaxDegree + j];
+                    cached_neighbours[thid*MaxDegree + j] = dual_neighbours_dev[isomer_idx*Nf*MaxDegree + thid*MaxDegree + j];
                 }
             } 
             
@@ -297,9 +297,9 @@ void dualise_sycl_v1(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
                 auto [u, v] = arc_list[tix];
                 auto w = FD.next(u,v);
     //
-                auto edge_b = FD.get_cannonical_triangle_arc(v, u); cubic_neighbours_dev[bid*N*3 + tix*3 + 0] = triangle_numbers[edge_b[0]*MaxDegree + FD.dedge_ix(edge_b[0], edge_b[1])];
-                auto edge_c = FD.get_cannonical_triangle_arc(w, v); cubic_neighbours_dev[bid*N*3 + tix*3 + 1] = triangle_numbers[edge_c[0]*MaxDegree + FD.dedge_ix(edge_c[0], edge_c[1])];
-                auto edge_d = FD.get_cannonical_triangle_arc(u, w); cubic_neighbours_dev[bid*N*3 + tix*3 + 2] = triangle_numbers[edge_d[0]*MaxDegree + FD.dedge_ix(edge_d[0], edge_d[1])];
+                auto edge_b = FD.get_cannonical_triangle_arc(v, u); cubic_neighbours_dev[isomer_idx*N*3 + tix*3 + 0] = triangle_numbers[edge_b[0]*MaxDegree + FD.dedge_ix(edge_b[0], edge_b[1])];
+                auto edge_c = FD.get_cannonical_triangle_arc(w, v); cubic_neighbours_dev[isomer_idx*N*3 + tix*3 + 1] = triangle_numbers[edge_c[0]*MaxDegree + FD.dedge_ix(edge_c[0], edge_c[1])];
+                auto edge_d = FD.get_cannonical_triangle_arc(u, w); cubic_neighbours_dev[isomer_idx*N*3 + tix*3 + 2] = triangle_numbers[edge_d[0]*MaxDegree + FD.dedge_ix(edge_d[0], edge_d[1])];
             }
             #if GRID_STRIDED
             }
