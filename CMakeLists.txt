@@ -11,6 +11,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find OpenMP-enabled compiler for OpenMP-implementations.
 find_package(OpenMP)
+message("OpenMP CXX_FLAGS: ${OpenMP_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 
 # Make external fullerene package use a Fortran compiler that works.
 set(CMAKE_Fortran_COMPILER gfortran CACHE STRING "Fortran compiler") # Default to GNU Fortran (e.g. Cray Fortran breaks currently)
@@ -87,7 +89,7 @@ if(ENABLE_SYCL)
 
     
   elseif(SYCL_TARGETS STREQUAL "X86")
-    set(DPCPP_TARGET_FLAGS "-fsycl-targets=x86_64 -march=native")
+    set(DPCPP_TARGET_FLAGS "-fsycl-targets=x86_64 -march=native -O3 -Xopenmp-target --offload-arch=native")
     set(DPCPP_LINK_FLAGS   "-O3 -fsycl -fsycl-unnamed-lambda ${DPCPP_TARGET_FLAGS}")
     
   endif()
