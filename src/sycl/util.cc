@@ -60,4 +60,51 @@ void fill(IsomerBatch<T,K>& B, int set_div,int offset) {
       }
     }
 }
+
+template <typename T, typename K>
+void bucky_fill(IsomerBatch<T,K>& B, int ntasks, int mytask_id) {
+  int N = B.n_atoms;
+  int Nf = B.n_faces;
+  int N_graphs = B.m_capacity;
+  auto face_degrees_acc = host_accessor(B.face_degrees);
+  auto dual_neighbours_acc = host_accessor(B.dual_neighbours);
+  auto statuses_acc = host_accessor(B.statuses);
+  BuckyGen::buckygen_queue BuckyQ = BuckyGen::start(N,false, false, mytask_id, ntasks);
+  Graph G;
+
+  G.neighbours = neighbours_t(Nf, std::vector<node_t>(6));
+  G.N = Nf;
+  int num_generated = 0;
+  for (int i = 0; i < N_graphs; ++i) {
+    bool more_isomers = BuckyGen::next_fullerene(BuckyQ, G);
+    if (!more_isomers) break;
+    num_generated++;
+    statuses_acc[i] = IsomerStatus::NOT_CONVERGED;
+    for(int j = 0; j < Nf; j++) {
+      face_degrees_acc[i*Nf + j] = G.neighbours[j].size();
+      for(int k = 0; k < G.neighbours[j].size(); k++) {
+        dual_neighbours_acc[i*Nf*6 + j*6 + k] = G.neighbours[j][k];
+      }
+    }
+  }
+  if (num_generated < N_graphs) {
+    for (int i = num_generated; i < N_graphs; ++i) {
+      statuses_acc[i] = IsomerStatus::NOT_CONVERGED;
+      //Repeat the same graphs as already generated.
+      for(int j = 0; j < Nf; j++) {
+        face_degrees_acc[i*Nf + j] = face_degrees_acc[(i%num_generated)*Nf + j];
+        for(int k = 0; k < 6; k++) {
+          dual_neighbours_acc[i*Nf*6 + j*6 + k] = dual_neighbours_acc[(i%num_generated)*Nf*6 + j*6 + k];
+        }
+      }
+    }
+  }
+
+}
+
+
 template void fill(IsomerBatch<float,uint16_t>& B, int set_div, int offset);
+template void fill(IsomerBatch<double,uint16_t>& B, int set_div, int offset);
+
+template void bucky_fill(IsomerBatch<float,uint16_t>& B, int ntasks, int mytask_id);
+template void bucky_fill(IsomerBatch<double,uint16_t>& B, int ntasks, int mytask_id);
