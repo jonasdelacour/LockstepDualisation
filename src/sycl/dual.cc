@@ -9,7 +9,7 @@
 #include "forcefield-includes.cc"
 using namespace sycl;
 //Template specialisation for dualise
-
+#define GRID_STRIDED 1
 
 #define UINT_TYPE_MAX std::numeric_limits<UINT_TYPE>::max()
 
@@ -105,23 +105,38 @@ void dualise_sycl_v0(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
         local_accessor<node_t, 1>   cached_degrees(Nf, h);
         local_accessor<node2, 1>    arc_list(N, h);
 
+        auto num_compute_units = Q.get_device().get_info<info::device::max_compute_units>();
+
         //Create device accessors
         accessor     cubic_neighbours_dev(batch.cubic_neighbours, h, write_only);
         accessor     face_degrees_dev(batch.face_degrees, h, read_only);
         accessor     dual_neighbours_dev(batch.dual_neighbours, h, read_only);
         /* 
         std::cout << N * capacity << std::endl; */
+        #if GRID_STRIDED
+        h.parallel_for<class dualise>(sycl::nd_range(sycl::range{N*num_compute_units}, sycl::range{N}), [=](nd_item<1> nditem) {
+        #else
         h.parallel_for<class dualise>(sycl::nd_range(sycl::range{N*capacity}, sycl::range{N}), [=](nd_item<1> nditem) {
+        #endif
             auto cta = nditem.get_group();
             auto thid = nditem.get_local_linear_id();
             auto bid = nditem.get_group_linear_id();
+            #if GRID_STRIDED == 0
+            auto isomer_idx = bid;
+            #endif
             //cta.async_work_group_copy(cached_neighbours.get_pointer(), dual_neighbours_dev.get_pointer() + bid*Nf*MaxDegree, Nf*MaxDegree);
             //cta.async_work_group_copy(cached_degrees.get_pointer(), face_degrees_dev.get_pointer() + bid*Nf, Nf);
-
+            #if GRID_STRIDED
+            for (size_t isomer_idx = bid; isomer_idx < capacity; isomer_idx += num_compute_units)
+            {
+            #endif
+                /* code */
+            
+            
             if(thid < Nf){
-                cached_degrees[thid] = face_degrees_dev[bid*Nf + thid];
+                cached_degrees[thid] = face_degrees_dev[isomer_idx*Nf + thid];
                 for (node_t j = 0; j < MaxDegree; j++){
-                    cached_neighbours[thid*MaxDegree + j] = dual_neighbours_dev[bid*Nf*MaxDegree + thid*MaxDegree + j];
+                    cached_neighbours[thid*MaxDegree + j] = dual_neighbours_dev[isomer_idx*Nf*MaxDegree + thid*MaxDegree + j];
                 }
             } 
             
@@ -168,9 +183,13 @@ void dualise_sycl_v0(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
             auto [u, v] = arc_list[thid];
             auto w = FD.next(u,v);
 //
-            auto edge_b = FD.get_cannonical_triangle_arc(v, u); cubic_neighbours_dev[bid*N*3 + thid*3 + 0] = triangle_numbers[edge_b[0]*MaxDegree + FD.dedge_ix(edge_b[0], edge_b[1])];
-            auto edge_c = FD.get_cannonical_triangle_arc(w, v); cubic_neighbours_dev[bid*N*3 + thid*3 + 1] = triangle_numbers[edge_c[0]*MaxDegree + FD.dedge_ix(edge_c[0], edge_c[1])];
-            auto edge_d = FD.get_cannonical_triangle_arc(u, w); cubic_neighbours_dev[bid*N*3 + thid*3 + 2] = triangle_numbers[edge_d[0]*MaxDegree + FD.dedge_ix(edge_d[0], edge_d[1])];
+            auto edge_b = FD.get_cannonical_triangle_arc(v, u); cubic_neighbours_dev[isomer_idx*N*3 + thid*3 + 0] = triangle_numbers[edge_b[0]*MaxDegree + FD.dedge_ix(edge_b[0], edge_b[1])];
+            auto edge_c = FD.get_cannonical_triangle_arc(w, v); cubic_neighbours_dev[isomer_idx*N*3 + thid*3 + 1] = triangle_numbers[edge_c[0]*MaxDegree + FD.dedge_ix(edge_c[0], edge_c[1])];
+            auto edge_d = FD.get_cannonical_triangle_arc(u, w); cubic_neighbours_dev[isomer_idx*N*3 + thid*3 + 2] = triangle_numbers[edge_d[0]*MaxDegree + FD.dedge_ix(edge_d[0], edge_d[1])];
+
+            #if GRID_STRIDED
+            }
+            #endif
         });
     });
     if(policy == LaunchPolicy::SYNC) Q.wait();
