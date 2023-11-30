@@ -1,7 +1,7 @@
 #Set Up CMake
 project(LockstepDualisation)
 
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.12)
 include(CheckLanguage)
 include(CMakeDependentOption)
 
@@ -9,6 +9,8 @@ set(CMAKE_GENERATOR "Unix Makefiles" CACHE INTERNAL "" FORCE)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Find OpenMP-enabled compiler for OpenMP-implementations.
+find_package(OpenMP)
 
 # Make external fullerene package use a Fortran compiler that works.
 set(CMAKE_Fortran_COMPILER gfortran CACHE STRING "Fortran compiler") # Default to GNU Fortran (e.g. Cray Fortran breaks currently)

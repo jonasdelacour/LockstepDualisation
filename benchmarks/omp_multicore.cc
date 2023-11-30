@@ -1,16 +1,20 @@
 #include "cpp_kernels.h"
 #include "util.h"
+#include <stdlib.h>
 #include <iostream>
 #include <fstream>
 #include <chrono>
 
 using namespace std::chrono;
 int main(int argc, char** argv){
-    int N = argc > 1 ? std::stoi(argv[1]) : 200;
-    int N_graphs = argc > 2 ? std::stoi(argv[2]) : 10000;
-    int N_runs = argc > 3 ? std::stoi(argv[3]) : 10;
-    int N_warmup = argc > 4 ? std::stoi(argv[4]) : 5;
-    int version = argc > 5 ? std::stoi(argv[5]) : 0;
+  const char *version_ptr = getenv("DUALIZE_VERSION");
+  int version = version_ptr? strtol(version_ptr,0,0) : 0;
+  
+  int N = argc > 1 ? std::stoi(argv[1]) : 200;
+  int N_graphs = argc > 2 ? std::stoi(argv[2]) : 10000;
+  int N_runs = argc > 3 ? std::stoi(argv[3]) : 10;
+  int N_warmup = argc > 4 ? std::stoi(argv[4]) : 5;
+  
     std::string filename = argc > 6 ? argv[6] : "omp_multicore.csv";
     std::cout << "Dualising " << N_graphs << " triangulation graphs, each with " << N
               << " triangles, repeated " << N_runs << " times and with " << N_warmup

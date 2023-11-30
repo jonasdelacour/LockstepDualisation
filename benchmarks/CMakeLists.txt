@@ -1,8 +1,12 @@
 add_executable(baseline baseline.cc)
 target_link_libraries(baseline cpp_lib fullerenes)
 
-add_executable(omp_multicore omp_multicore.cc)
-target_link_libraries(omp_multicore cpp_lib)
+if(OpenMP_FOUND)
+  add_executable(omp_multicore omp_multicore.cc)
+  target_link_libraries(omp_multicore PUBLIC cpp_lib OpenMP::OpenMP_CXX)
+else()
+  message("OpenMP-enabled compiler not found.")
+endif()
 
 if(CMAKE_CUDA_COMPILER)
     add_executable(single_gpu single_gpu.cc)
