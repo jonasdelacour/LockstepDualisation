@@ -2,6 +2,7 @@ if(DPCPP_COMPILER)
 
 set(SYCL_EXECUTABLES
   sycl_benchmark
+  pipeline_benchmark
 )
 
 foreach(EXECUTABLE ${SYCL_EXECUTABLES})
