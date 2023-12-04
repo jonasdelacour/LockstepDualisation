@@ -109,7 +109,7 @@ void dualise_sycl_v0(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
         local_accessor<node2, 1>    arc_list(N, h);
 
         auto num_compute_units = Q.get_device().get_info<info::device::max_compute_units>();
-        auto n_blocks_strided = num_compute_units*2;
+        auto n_blocks_strided = num_compute_units;
         //Create device accessors
         accessor     cubic_neighbours_dev(batch.cubic_neighbours, h, write_only);
         accessor     face_degrees_dev(batch.face_degrees, h, read_only);
@@ -127,22 +127,24 @@ void dualise_sycl_v0(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
             #if GRID_STRIDED == 0
             auto isomer_idx = bid;
             #endif
-            //cta.async_work_group_copy(cached_neighbours.get_pointer(), dual_neighbours_dev.get_pointer() + bid*Nf*MaxDegree, Nf*MaxDegree);
-            //cta.async_work_group_copy(cached_degrees.get_pointer(), face_degrees_dev.get_pointer() + bid*Nf, Nf);
             #if GRID_STRIDED
             for (size_t isomer_idx = bid; isomer_idx < capacity; isomer_idx += n_blocks_strided)
             {
             #endif
             
-            if(thid < Nf){
+            cta.async_work_group_copy(cached_neighbours.get_pointer(), dual_neighbours_dev.get_pointer() + bid*Nf*MaxDegree, Nf*MaxDegree);
+            cta.async_work_group_copy(cached_degrees.get_pointer(),    face_degrees_dev.get_pointer() + bid*Nf, Nf);
+            /* if(thid < Nf){
                 cached_degrees[thid] = face_degrees_dev[isomer_idx*Nf + thid];
                 for (node_t j = 0; j < MaxDegree; j++){
                     cached_neighbours[thid*MaxDegree + j] = dual_neighbours_dev[isomer_idx*Nf*MaxDegree + thid*MaxDegree + j];
                 }
-            } 
+            }  */
             
             
             DeviceDualGraph<MaxDegree, node_t> FD(cached_neighbours.get_pointer(), cached_degrees.get_pointer());
+            //DeviceDualGraph<MaxDegree, node_t> FD(dual_neighbours_dev.get_pointer() + isomer_idx*Nf*MaxDegree, face_degrees_dev.get_pointer() + isomer_idx*Nf);
+
             node_t cannon_arcs[MaxDegree]; for(size_t i=0;i<MaxDegree;i++) cannon_arcs[i] = EMPTY_NODE(); // memset sets bytes, but node_t is multi-byte.
             node_t rep_count  = 0;
             sycl::group_barrier(cta);     
@@ -221,7 +223,7 @@ void dualise_sycl_v1(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
         local_accessor<node_t, 1>   cached_degrees(Nf, h);
         local_accessor<node2, 1>    arc_list(N, h);
         auto num_compute_units = Q.get_device().get_info<info::device::max_compute_units>();
-        auto n_blocks_strided = num_compute_units*2;
+        auto n_blocks_strided = num_compute_units;
         //Create device accessors
         accessor     cubic_neighbours_dev(batch.cubic_neighbours, h, write_only);
         accessor     face_degrees_dev(batch.face_degrees, h, read_only);
