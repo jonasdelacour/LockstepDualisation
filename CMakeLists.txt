@@ -74,7 +74,6 @@ if(ENABLE_SYCL)
     set(PTXAS_COMPILE_FLAGS    " --verbose -g --maxrregcount=${GPU_MAXREGCOUNT} --opt-level=3 --generate-line-info --warn-on-double-precision-use --warn-on-spills")
     set(PTXAS_LINK_FLAGS
     "SHELL:-Xcuda-ptxas --verbose"
-    "SHELL:-Xcuda-ptxas --maxrregcount=80"
     "SHELL:-Xcuda-ptxas --opt-level=3"
     "SHELL:-Xcuda-ptxas --generate-line-info"
     "SHELL:-Xcuda-ptxas --warn-on-double-precision-use"
