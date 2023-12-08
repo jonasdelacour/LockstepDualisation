@@ -14,9 +14,10 @@ int main(int argc, char** argv){
   int N_graphs = argc > 2 ? std::stoi(argv[2]) : 10000;
   int N_runs = argc > 3 ? std::stoi(argv[3]) : 10;
   int N_warmup = argc > 4 ? std::stoi(argv[4]) : 5;
+  version      = argc > 5 ? std::stoi(argv[5]) : version;
   
-    std::string filename = argc > 6 ? argv[6] : "omp_multicore.csv";
-    std::cout << "Dualising " << N_graphs << " triangulation graphs, each with " << N
+  std::string filename = argc > 6 ? argv[6] : "omp_multicore.csv";
+  std::cout << "Dualising " << N_graphs << " triangulation graphs, each with " << N
               << " triangles, repeated " << N_runs << " times and with " << N_warmup
               << " warmup runs." << std::endl;
 
