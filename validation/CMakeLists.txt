@@ -1,6 +1,7 @@
 if(OpenMP_FOUND)
   add_executable(omp_validation omp_validation.cc)
-  target_link_libraries(omp_validation cpp_lib fullerenes)
+  target_compile_options(omp_validation PUBLIC ${OpenMP_CXX_FLAGS})
+  target_link_libraries(omp_validation cpp_lib fullerenes OpenMP::OpenMP_CXX)
 endif()
 
 if(CMAKE_CUDA_COMPILER)
