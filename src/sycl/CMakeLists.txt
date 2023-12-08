@@ -5,4 +5,5 @@ set_source_files_properties(tutte.cc        PROPERTIES COMPILE_FLAGS "${CMAKE_CX
 set_source_files_properties(projection.cc   PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -fPIC ${DPCPP_FLAGS}")
 set_source_files_properties(forcefield.cc   PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -fPIC ${DPCPP_FLAGS}")
 set_source_files_properties(isomer_batch.cc PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -fPIC ${DPCPP_FLAGS}")
-add_library(sycl_fullerene dual.cc util.cc isomer_batch.cc forcefield.cc tutte.cc projection.cc)
+set_source_files_properties(nop_kernel.cc   PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -fPIC ${DPCPP_FLAGS}")
+add_library(sycl_fullerene dual.cc util.cc isomer_batch.cc forcefield.cc tutte.cc projection.cc nop_kernel.cc)
