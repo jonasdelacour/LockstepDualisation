@@ -208,8 +208,7 @@ void dualise_sycl_v1(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
     
     if(policy == LaunchPolicy::SYNC) Q.wait();
     auto subgroup_size = Q.get_device().get_info<info::device::sub_group_sizes>()[0];
-    size_t lcm = roundUp(batch.n_faces, subgroup_size);
-    std::cout << "Subgroup size is: "<< subgroup_size << "Least common multiple is: " << lcm << std::endl;
+    size_t lcm = roundUp(batch.n_faces, subgroup_size); 
     Q.submit([&](handler &h) {
         auto N = batch.n_atoms;
         auto Nf = batch.n_faces;
@@ -243,15 +242,15 @@ void dualise_sycl_v1(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
             for (size_t isomer_idx = bid; isomer_idx < capacity; isomer_idx += n_blocks_strided)
             {
             #endif
-            //cta.async_work_group_copy(cached_neighbours.get_pointer(), dual_neighbours_dev.get_pointer() + bid*Nf*MaxDegree, Nf*MaxDegree);
-            //cta.async_work_group_copy(cached_degrees.get_pointer(), face_degrees_dev.get_pointer() + bid*Nf, Nf);
+            cta.async_work_group_copy(cached_neighbours.get_pointer(), dual_neighbours_dev.get_pointer() + bid*Nf*MaxDegree, Nf*MaxDegree);
+            cta.async_work_group_copy(cached_degrees.get_pointer(), face_degrees_dev.get_pointer() + bid*Nf, Nf);
 
-            if(thid < Nf){
+            /* if(thid < Nf){
                 cached_degrees[thid] = face_degrees_dev[bid*Nf + thid];
                 for (node_t j = 0; j < MaxDegree; j++){
                     cached_neighbours[thid*MaxDegree + j] = dual_neighbours_dev[bid*Nf*MaxDegree + thid*MaxDegree + j];
                 }
-            } 
+            } */ 
             
             
             DeviceDualGraph<MaxDegree, node_t> FD(cached_neighbours.get_pointer(), cached_degrees.get_pointer());
