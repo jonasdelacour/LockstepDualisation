@@ -84,12 +84,9 @@ int main(int argc, char** argv) {
         };
 
         dualise_sycl_v0<6>(Q, batch);
-        tutte_layout_sycl(Q, batch);
-        spherical_projection_sycl(Q, batch);
-        forcefield_optimise_sycl<ForcefieldType::PEDERSEN>(Q, batch, N*5, N*5);
         if (check_graphs()) return 1;
-        //dualise_cuda_v1<6>(batch);
-        //if (check_graphs()) return 1;
+        dualise_sycl_v1<6>(Q, batch);
+        if (check_graphs()) return 1;
 
 
     }
