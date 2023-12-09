@@ -26,13 +26,15 @@ int main(int argc, char** argv) {
 
     printf("Validating SYCL implementation for %s device: %s.\n",
 	   argv[1], Q.get_device().get_info<sycl::info::device::name>().c_str());
-    
+    size_t total_validated = 0;
     for (size_t N = start_range; N <= end_range; N+=2) {
         if (N == 22) continue;
-        std::cout << "N = " << N << std::endl;
         int Nf = N/2 + 2;
         int N_graphs = min<size_t>(10000, IsomerDB::number_isomers(N));
-        
+
+	printf("Validating dualization of %d C%ld-isomers against reference results.\n",N_graphs,N);
+	
+	
         IsomerBatch<float,uint16_t> batch(N, N_graphs);
         std::vector<FullereneDual> baseline_duals(N_graphs);
         for (int i = 0; i < N_graphs; ++i) {
@@ -88,8 +90,8 @@ int main(int argc, char** argv) {
         dualise_sycl_v1<6>(Q, batch);
         if (check_graphs()) return 1;
 
-
+	total_validated += N_graphs;
     }
-    std::cout << "Success!" << std::endl;
+    printf("Success! All %ld dualized graphs were identical to reference results.\n",total_validated);
     return 0;
 }
