@@ -5,6 +5,7 @@
 #include "numeric"
 #include "cmath"
 #include "algorithm"
+#include "random"
 #define SYCLBATCH
 #define IFW(x) if(x >= N_warmup)
 #include "util.h"
@@ -14,6 +15,20 @@ using namespace std::chrono_literals;
 using namespace std::chrono;
 using namespace std;
 
+vector<size_t> m_samples(size_t M, size_t m, int seed=42)
+{
+  vector<size_t> full_range(M), sample_indices(m);
+  for(size_t i=0;i<M;i++) full_range[i] = i;
+  
+  mt19937 rng(seed), rng_rand(random_device{}());
+
+  shuffle(full_range.begin(),full_range.end(),seed==-1? rng_rand : rng);
+  for(size_t i=0;i<m;i++) sample_indices[i] = full_range[i];
+  sort(sample_indices.begin(), sample_indices.end());
+
+  return sample_indices;
+}
+
 int main(int argc, char** argv) {
     // Make user be explicit about which device we want to test, to avoid surprises.
     if(argc < 2 || (string(argv[1]) != "cpu" && string(argv[1]) != "gpu")){
@@ -22,15 +37,19 @@ int main(int argc, char** argv) {
     }
     string device_type = argv[1];
     bool want_gpus = (device_type == "gpu");
-      
+    
     // Parameters for the benchmark run
     int N = argc > 2 ? stoi(argv[2]) : 200;
-    int N_graphs = argc > 3 ? stoi(argv[3]) : 1000000;
+    int N_graphs = argc > 3 ? stoi(argv[3]) : 10000;
+    int M_graphs = argc > 4 ? stoi(argv[4]) : 1000000;
     int N_runs = argc > 4 ? stoi(argv[4]) : 10;
     int N_warmup = argc > 5 ? stoi(argv[5]) : 1;
     int version = argc > 6 ? stoi(argv[6]) : 0;
     int N_gpus = argc > 7 ? stoi(argv[7]) : 1;
     string filename = argc > 8 ? argv[8] : "multi_"+device_type+".csv";
+
+    M_graphs = min(M_graphs, (int)IsomerDB::number_isomers(N, "Any", false));
+    N_graphs = min(N_graphs, M_graphs);
     
     cout << "Dualising " << N_graphs << " triangulation graphs, each with " << N
 	 << " triangles, repeated " << N_runs << " times and with " << N_warmup
@@ -80,64 +99,68 @@ int main(int argc, char** argv) {
     sycl::queue Q = sycl::queue(selector, sycl::property::queue::in_order{});
     vector<IsomerBatch<float,uint16_t>> batches; for(int i = 0; i < N_d; i++) batches.push_back(IsomerBatch<float,uint16_t>(N, N_graphs/N_d + N_graphs%N_d));
     Graph G(N);
+    vector<size_t> sample_ix = m_samples(M_graphs, N_graphs, -1);
     auto fill_and_dualise = [&](IsomerBatch<float,uint16_t>& batch) -> std::tuple<double, double, double>
     {
-    double overhead = 0;
-    double buckytime = 0; double dualtime = 0;
-    auto start = std::chrono::steady_clock::now();
     BuckyGen::buckygen_queue BuckyQ = BuckyGen::start(N, 0, 0);
 
     sycl::host_accessor acc_dual(batch.dual_neighbours, sycl::write_only);
-    sycl::host_accessor acc_cubic(batch.cubic_neighbours, sycl::write_only);
     sycl::host_accessor acc_degs(batch.face_degrees, sycl::write_only);
     sycl::host_accessor acc_status (batch.statuses, sycl::write_only);
+    sycl::host_accessor acc_cubic(batch.cubic_neighbours, sycl::write_only);
+    
+    Triangulation g;
+    size_t isomer_ix = 0;
+    steady_clock::time_point before_time, after_time;
+    double overhead = 0;
+    double buckytime = 0; double dualtime = 0;
+    size_t ii = 0;
+        while( BuckyGen::next_fullerene(BuckyQ,g) && (isomer_ix < M_graphs) && (ii<batch.m_capacity)){
+            before_time = steady_clock::now();
 
-    overhead += std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - start).count();
-    for (size_t ii = 0; ii < batch.m_capacity; ii++)
-    {   
-        auto start = std::chrono::steady_clock::now();
-        auto more = BuckyGen::next_fullerene(BuckyQ, G);
-        if (ii == 0){ overhead += std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - start).count(); }
-        else{ buckytime += std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - start).count(); }
-        auto T0 = std::chrono::steady_clock::now();
-        for (size_t j = 0; j < Nf; j++)
-        {
-            for(size_t k = 0; k < G.neighbours[j].size(); k++)
+            size_t next_sample = sample_ix[ii];
+            //    fprintf(stderr,"isomer_ix=%ld ii=%ld next_sample=%ld\n",isomer_ix,ii,next_sample);
+            if(isomer_ix == next_sample){
+            buckytime += duration<double,nanoseconds::period>(before_time-after_time).count(); // Time spent waiting for buckygen to generate g
+            for (size_t j = 0; j < Nf; j++)
             {
-                acc_dual[ii*Nf*6 + j*6 + k] = G.neighbours[j][k];
-            } 
-            if(G.neighbours[j].size() == 5){
-                acc_dual[ii*Nf*6 + j*6 + 5] = std::numeric_limits<uint16_t>::max();
-                acc_degs[ii*Nf + j] = 5;
-            } else {
-                acc_degs[ii*Nf + j] = 6;
-            }   
+                for(size_t k = 0; k < g.neighbours[j].size(); k++)
+                {
+                    acc_dual[ii*Nf*6 + j*6 + k] = g.neighbours[j][k];
+                } 
+                if(g.neighbours[j].size() == 5){
+                    acc_dual[ii*Nf*6 + j*6 + 5] = std::numeric_limits<uint16_t>::max();
+                    acc_degs[ii*Nf + j] = 5;
+                } else {
+                    acc_degs[ii*Nf + j] = 6;
+                }   
 
-        }
-        overhead += std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - T0).count();
-        buckytime += std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - start).count();
-        FullereneDual FD(G);
-        auto T1 = std::chrono::steady_clock::now();
-        FD.update();
-        PlanarGraph pG = FD.dual_graph();
-        auto T2 = std::chrono::steady_clock::now(); dualtime += std::chrono::duration<double, std::nano>(T2 - T1).count();
-
-        for (size_t j = 0; j < N; j++){
-            for (size_t k = 0; k < 3; k++)
-            {
-                acc_cubic[ii*N*3 + j*3 + k] = pG.neighbours[j][k];
             }
-            
-        }
-        if(!more) break;
+            auto T0 = std::chrono::steady_clock::now();
+            FullereneDual FD(g);
+            auto T1 = std::chrono::steady_clock::now(); overhead += std::chrono::duration<double, std::nano>(T1 - T0).count();
+            FD.update();
+            PlanarGraph pG = FD.dual_graph();
+            auto T2 = std::chrono::steady_clock::now(); dualtime += std::chrono::duration<double, std::nano>(T2 - T1).count();
 
-        
-        acc_status[ii] = IsomerStatus::NOT_CONVERGED;
-        auto T3 = std::chrono::steady_clock::now(); overhead += std::chrono::duration<double, std::nano>(T3 - T2).count();
-    }
+            for (size_t j = 0; j < N; j++){
+                for (size_t k = 0; k < 3; k++)
+                {
+                    acc_cubic[ii*N*3 + j*3 + k] = pG.neighbours[j][k];
+                }
+                
+            }
+            acc_status[ii] = IsomerStatus::NOT_CONVERGED;
+            ii++;
+            overhead += std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - T2).count();
+            }
+            isomer_ix++;
+            after_time = steady_clock::now();
+        }
         BuckyGen::stop(BuckyQ);
         return {overhead, buckytime, dualtime};
     };
+
     
     vector<double> times_generate(N_runs); //Times in nanoseconds.
     vector<double> times_overhead(N_runs); //Times in nanoseconds.
