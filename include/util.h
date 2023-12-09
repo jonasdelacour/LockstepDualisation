@@ -6,6 +6,7 @@
 #include <string>
 #include "fullerenes/polyhedron.hh"
 #include "fullerenes/buckygen-wrapper.hh"
+#include "fullerenes/isomerdb.hh"
 
 template <typename T>
 T mean(const std::vector<T>& v);
