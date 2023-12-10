@@ -74,53 +74,53 @@ def reset_file(filename):
 
 
 # # TODO: Only delete results when re-running benchmark
-# reset_file(f'{path}/base.csv')
-# reset_file(f'{path}/one_gpu_v0.csv')
-# reset_file(f'{path}/one_gpu_v1.csv')
-# reset_file(f'{path}/multi_gpu_v0.csv')
-# reset_file(f'{path}/multi_gpu_v1.csv')
-# reset_file(f'{path}/multi_gpu_weak.csv')
+reset_file(f'{path}/base.csv')
+reset_file(f'{path}/one_gpu_v0.csv')
+reset_file(f'{path}/one_gpu_v1.csv')
+reset_file(f'{path}/multi_gpu_v0.csv')
+reset_file(f'{path}/multi_gpu_v1.csv')
+reset_file(f'{path}/multi_gpu_weak.csv')
 
-# # %% [markdown]
-# # ### Validation
+# %% [markdown]
+# ### Validation
 
-# # %%
-# #Validate SYCL kernels against baseline dualisation
+# %%
+#Validate SYCL kernels against baseline dualisation
 
-# process = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}validation/sycl/sycl_validation gpu'], env=env).wait()
+process = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}validation/sycl/sycl_validation gpu'], env=env).wait()
 
-# # %% [markdown]
-# # ### Run the batch size experiment
+# %% [markdown]
+# ### Run the batch size experiment
 
-# # %%
-# reset_file(f'{path}/single_gpu_bs.csv')
+# %%
+reset_file(f'{path}/single_gpu_bs.csv')
 
 
-# for i in range(0,20):
-#     if(num_gpus>0):
-#         proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {200} {2**(i)} {Ngpu_runs} {Ngpu_warmup} 1 1 {path}/single_gpu_bs.csv'], env=env); proc.wait()
+for i in range(0,20):
+    if(num_gpus>0):
+        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {200} {2**(i)} {Ngpu_runs} {Ngpu_warmup} 1 1 {path}/single_gpu_bs.csv'], env=env); proc.wait()
 
 
         
-# # %% [markdown]
-# # ### Run the benchmarks
+# %% [markdown]
+# ### Run the benchmarks
 
-# # %%
-# reset_file(f'{path}/base.csv')
-# reset_file(f'{path}/one_gpu_v0.csv')
-# reset_file(f'{path}/one_gpu_v1.csv')
-# reset_file(f'{path}/multi_gpu_v0.csv')
-# reset_file(f'{path}/multi_gpu_v1.csv')
-# reset_file(f'{path}/multi_gpu_weak.csv')
+# %%
+reset_file(f'{path}/base.csv')
+reset_file(f'{path}/one_gpu_v0.csv')
+reset_file(f'{path}/one_gpu_v1.csv')
+reset_file(f'{path}/multi_gpu_v0.csv')
+reset_file(f'{path}/multi_gpu_v1.csv')
+reset_file(f'{path}/multi_gpu_weak.csv')
 
-# for i in range(20,201,2):
-#     os.system(f'{buildpath}benchmarks/baseline {i} {2**(6+OFFSET_BS)} {Ncpu_runs} {Ncpu_warmup} 0 {path}/base.csv')
-#     if(num_gpus>0):
-#         proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 0 1 {path}/one_gpu_v0.csv'], env=env);  proc.wait()
-#         proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 1 1 {path}/one_gpu_v1.csv'], env=env); proc.wait()
-#         proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 0 {num_gpus} {path}/multi_gpu_v0.csv'], env=env); proc.wait()
-#         proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 1 {num_gpus} {path}/multi_gpu_v1.csv'], env=env); proc.wait()
-#         proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {num_gpus*2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 1 {num_gpus} {path}/multi_gpu_weak.csv'], env=env); proc.wait()
+for i in range(20,201,2):
+    os.system(f'{buildpath}benchmarks/baseline {i} {2**(6+OFFSET_BS)} {Ncpu_runs} {Ncpu_warmup} 0 {path}/base.csv')
+    if(num_gpus>0):
+        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 0 1 {path}/one_gpu_v0.csv'], env=env);  proc.wait()
+        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 1 1 {path}/one_gpu_v1.csv'], env=env); proc.wait()
+        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 0 {num_gpus} {path}/multi_gpu_v0.csv'], env=env); proc.wait()
+        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 1 {num_gpus} {path}/multi_gpu_v1.csv'], env=env); proc.wait()
+        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {num_gpus*2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 1 {num_gpus} {path}/multi_gpu_weak.csv'], env=env); proc.wait()
 
 
     
