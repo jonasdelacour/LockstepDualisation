@@ -1,22 +1,27 @@
-MPICXX=/usr/bin/mpic++
-MPIRUN=/usr/bin/mpirun
-HOSTS=-host threadripper00:32,threadripper01:32
-PWD=$(shell pwd)
-BASEDIR=$(shell dirname $$PWD)
+output_dir = output/$(shell hostname)
+PYTHON=python3
 
-CUDA_LIB_PATH=$(PWD)/build/src/cuda
-CUDA_LIB=-L$(CUDA_LIB_PATH) -lcuda_lib
-CPP_LIB=-L$(PWD)/build/src/c++ -lcpp_lib
-INCLUDES=-I$(PWD)/include/
+configure:
+	mkdir -p build
+	cd build ; ccmake .. -DCMAKE_BUILD_TYPE=Release ; cd -
 
-all: build run
+build/CmakeCache.txt: configure
 
-build: mpi_hello_world.cpp
-	$(MPICXX) -o mpi_hello_world mpi_hello_world.cpp $(INCLUDES) $(CUDA_LIB) -I /opt/nvidia/hpc_sdk/Linux_x86_64/2022/cuda/11.8/include/
-	rsync -r $(PWD) threadripper01:$(BASEDIR)
+binaries: build/CMakeCache.txt
+	cd build ; make -j ; cd -
 
-run: mpi_hello_world host_file
-	$(MPIRUN) -hostfile host_file $(HOSTS) -mca btl_tcp_if_include enp8s0 -mca btl_tcp_if_exclude,lo docker0 -N 1 $(PWD)/mpi_hello_world 200 1000000 20 1 1 
+build/validation/sycl/sycl_validation: binaries
 
-clean:
-	rm -f mpi_hello_world
+validation: ./build/validation/sycl/sycl_validation
+	mkdir -p ${output_dir}
+	./build/validation/sycl/sycl_validation cpu | tee ${output_dir}/validation_cpu.log
+	./build/validation/sycl/sycl_validation gpu | tee ${output_dir}/validation_gpu.log
+
+
+benchmarks_single_node: configure binaries
+	$PYTHON -m pip install -r requirements.txt
+	$PYTHON benchmarks.py
+
+
+
+
