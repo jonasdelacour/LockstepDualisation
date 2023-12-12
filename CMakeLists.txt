@@ -1,7 +1,7 @@
 #Set Up CMake
+cmake_minimum_required(VERSION 3.12)
 project(LockstepDualisation)
 
-cmake_minimum_required(VERSION 3.12)
 include(CheckLanguage)
 include(CMakeDependentOption)
 
@@ -33,7 +33,7 @@ check_language(CUDA)
 cmake_dependent_option(ENABLE_CUDA "Build CUDA GPU code" ON "CMAKE_CUDA_COMPILER" OFF)
 if(CMAKE_CUDA_COMPILER)
   message("Found CUDA compiler: ${CMAKE_CUDA_COMPILER}")
-  set(CMAKE_CUDA_ARCHITECTURES 86 CACHE INTEGER "Architecture for your NVIDIA GPU: 50|60|70|75|80|86|89|90. See https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/")
+  set(CMAKE_CUDA_ARCHITECTURES 50 CACHE INTEGER "Architecture for your NVIDIA GPU: 50|60|70|75|80|86|89|90. See https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/")
 else()
   message("Could not find CUDA compiler.")
 endif()
