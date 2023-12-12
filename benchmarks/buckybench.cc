@@ -57,7 +57,7 @@ int main(int ac, char **av)
     M         = ac>2? strtol(av[2],0,0):default_M,
     n_batches = ac>3? strtol(av[3],0,0):default_batches,
     my_batch  = ac>4? strtol(av[4],0,0):0;
-  M = min<size_t>(M,Nisomers/n_batches);
+    M = ::min<size_t>(M,Nisomers/n_batches);
   
 
   // Benchmark Buckygen graph generation without payload
