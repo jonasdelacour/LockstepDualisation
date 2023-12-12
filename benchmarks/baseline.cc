@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    auto sample_size = min<size_t>(200,IsomerDB::number_isomers(N));
+    auto sample_size = ::min<size_t>(200,IsomerDB::number_isomers(N));
     int Nf = N/2 + 2;
     std::vector<node_t> in_graphs(N_graphs*Nf*6);
     std::vector<uint8_t> in_degrees(N_graphs*Nf);
