@@ -8,6 +8,7 @@
 #include "random"
 #define SYCLBATCH
 #define IFW(x) if(x >= N_warmup)
+#define EMPTY_NODE std::numeric_limits<uint16_t>::max()
 #include "util.h"
 #include "sycl_kernels.h"
 
@@ -76,7 +77,7 @@ int main(int argc, char** argv) {
     int N_d = Qs.size();
 
     if (N_d < N_gpus)    {
-        cout << "Not enough devices available. Exiting." << endl;
+        cout << "Not enough compute devices available. Exiting." << endl;
         return 1;
     } else
       printf("Using %d %s-devices\n",N_gpus,device_type.c_str());
@@ -89,7 +90,7 @@ int main(int argc, char** argv) {
 
     sycl::queue Q = sycl::queue(selector, sycl::property::queue::in_order{});
     vector<IsomerBatch<float,uint16_t>> batches; for(int i = 0; i < N_d; i++) batches.push_back(IsomerBatch<float,uint16_t>(N, batch_size/N_d + batch_size%N_d));
-    typedef duration<double,nanoseconds::period> ns_time;
+    typedef duration<double,std::nano> ns_time;
     
     auto fill_and_dualise = [&](IsomerBatch<float,uint16_t>& batch) -> std::tuple<double, double, double> {
       sycl::host_accessor acc_dual(batch.dual_neighbours, sycl::write_only);
@@ -99,10 +100,10 @@ int main(int argc, char** argv) {
     
       Triangulation g;
       size_t isomer_ix = 0;
-      steady_clock::time_point before_time, after_time;
-      double overhead = 0;
-      double buckytime = 0; double dualtime = 0;
+      steady_clock::time_point before_time = steady_clock::now(), after_time = steady_clock::now();
+      double overhead = 0, buckytime = 0, dualtime = 0;
       size_t ii = 0;
+
       while( BuckyGen::next_fullerene(BuckyQ,g) && (isomer_ix < M_graphs) && (ii<batch.m_capacity)){
 	before_time = steady_clock::now();
 
@@ -112,7 +113,7 @@ int main(int argc, char** argv) {
 		acc_dual[ii*Nf*6 + j*6 + k] = g.neighbours[j][k];
 
 	    if(g.neighbours[j].size() == 5){
-	      acc_dual[ii*Nf*6 + j*6 + 5] = std::numeric_limits<uint16_t>::max();
+	      acc_dual[ii*Nf*6 + j*6 + 5] = EMPTY_NODE;
 	      acc_degs[ii*Nf + j] = 5;
 	    } else 
 	      acc_degs[ii*Nf + j] = 6;
@@ -132,10 +133,11 @@ int main(int argc, char** argv) {
 	ii++;
 	overhead += ns_time(steady_clock::now() - T2).count();
 
-      isomer_ix++;
-      after_time = steady_clock::now();
+	isomer_ix++;
+	after_time = steady_clock::now();
       }
-      
+
+      //      printf("toh=%g tgen=%g tdual=%g\n",overhead,buckytime,dualtime);      
       return {overhead, buckytime, dualtime};
     };
 
