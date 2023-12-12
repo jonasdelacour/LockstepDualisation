@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
 
     size_t M_graphs = min<size_t>((N_runs+N_warmup)*batch_size, (int)IsomerDB::number_isomers(N, "Any", false));
     batch_size      = min<size_t>(batch_size, M_graphs);    
-    N_warmup        = (M_graphs>=2*batch_size);
+    N_warmup        = (M_graphs>=2*batch_size); 
     N_runs          = M_graphs/batch_size - N_warmup; 
 
     cout << "Dualizing " << batch_size << " triangulation graphs, each with " << N
@@ -135,12 +135,12 @@ int main(int argc, char** argv) {
     vector<double> times_project (N_runs,0); //Times in nanoseconds.
     vector<double> times_opt     (N_runs,0); //Times in nanoseconds.
 
-#define forcefield_optimise(Q,B,L) forcefield_optimise_sycl(Q, B, 5*N, 5*N, L);    
+#define forcefield_optimise(Q,B,L) forcefield_optimise_sycl(Q, B, 5*N, 5*N, L)
 #define sync_and_time(T) for(int j = 0; j < N_gpus; j++) Qs[j].wait(); auto T = steady_clock::now()
 #define time_operation(kernel,name,t0,t1)					    \
     for(int j = 0; j < N_gpus; j++) kernel(Qs[j], batches[j], LaunchPolicy::ASYNC); \
     sync_and_time(t1);				\
-    IFW(i) name[i-N_warmup] = ns_time(t1-t0).count();
+    IFW(i) name[i-N_warmup] += ns_time(t1-t0).count();
       
     for(int i = 0; i < N_runs + N_warmup; i++){
       for(int j = 0; j < N_gpus; j++){
@@ -158,7 +158,7 @@ int main(int argc, char** argv) {
     BuckyGen::stop(BuckyQ);
 
 
-    //Removes data points that are more than 2 standard deviations from the mean. If there are less than 3 data points, this does nothing.
+    //Filter data points that are more than 2 standard deviations from the mean. If there are less than 3 data points, this does nothing.
     remove_outliers(times_generate); 
     remove_outliers(times_memcpy); 
     remove_outliers(times_dual); 
