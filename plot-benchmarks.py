@@ -33,11 +33,13 @@ rc.update({
   "font.family": "Times New Roman"
 })
 
-
-hostname = platform.node()
+if(len(sys.argv)>1):
+    benchname = sys.argv[1]
+else:
+    benchname = platform.node()
 
 # Benchmark result filenames
-path = f'/{os.getcwd()}/output/{hostname}/'
+path = f'/{os.getcwd()}/output/{benchname}/'
 buildpath = f'/{os.getcwd()}/build/'
 fname_base = f'{path}base.csv'
 fname_one_gpu_v0 = f'{path}one_gpu_v0.csv'
