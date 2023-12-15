@@ -7,7 +7,7 @@ gen_batch_size=3000000
 Ngpu_runs = 20 #Set to 100 for more accurate results, much smaller standard deviation.
 Ncpu_runs = 20 #Set to 100 for more accurate results, much smaller standard deviation.
 Ncpu_warmup = 1 #Warmup caches and branch predictor.
-Ngpu_warmup = 1 #No branch prediction on GPU, but if prefetching is disabled, the first run will fetch data.
+Ngpu_warmup = 1 #No branch prediction on GPU, but SYCL runtime incurs overhead the first time each kernel is run.
 #Change this number if the simulation is taking too long.
 #Setting this number to -1 will reduce the batch sizes by 1 power of 2
 OFFSET_BS = 0
@@ -83,7 +83,7 @@ def validate_kernel():
 def bench_batchsize():
 # # ### Run the batch size experiment
     reset_file(f'{path}/single_gpu_bs.csv')
-    for i in range(0,20):
+    for i in range(0,22):
         if(num_gpus>0):
             proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {200} {2**(i)} {Ngpu_runs} {Ngpu_warmup} 1 1 {path}/single_gpu_bs.csv'], env=env); proc.wait()
 
