@@ -1,10 +1,12 @@
-import numpy as np, pandas as pd
+import numpy as np, pandas as pd, matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt, colorsys
 from matplotlib import rcParams as rc
 import os, sys,subprocess, platform
 import matplotlib.ticker as ticker
 from matplotlib.ticker import MaxNLocator
 from mpl_toolkits.axes_grid1.inset_locator import (inset_axes, mark_inset)
+from os.path import relpath
 
 rc["legend.markerscale"] = 2.0
 rc["legend.framealpha"] = 0
@@ -39,8 +41,9 @@ else:
     benchname = platform.node()
 
 # Benchmark result filenames
-path = f'/{os.getcwd()}/output/{benchname}/'
-buildpath = f'/{os.getcwd()}/build/'
+cwd = os.getcwd()
+path = f'/{cwd}/output/{benchname}/'
+buildpath = f'/{cwd}/build/'
 fname_base = f'{path}base.csv'
 fname_one_gpu_v0 = f'{path}one_gpu_v0.csv'
 fname_one_gpu_v1 = f'{path}one_gpu_v1.csv'
@@ -77,6 +80,7 @@ KName1 = r"SYCL Kernel 1"
 ## Batch size
 
 def plot_batch_size():
+  print(f"Plotting batch size benchmark from {relpath(fname_single_gpu_bs,cwd)} to {relpath(path,cwd)}/figures/batch_size_benchmark.pdf")
   df_single_gpu_bs = pd.read_csv(fname_single_gpu_bs)
   Nrows = df_single_gpu_bs.shape[0]
   fig,ax = plt.subplots(figsize=(15,10))
@@ -132,6 +136,7 @@ def plot_batch_size():
 
 ## Baseline Sequential Dualization
 def plot_baseline():
+  print(f"Plotting baseline benchmark from {relpath(fname_base,cwd)} to {relpath(path,cwd)}/figures/baseline.pdf")    
   df_base = pd.read_csv(fname_base)
 
   fig, ax = plt.subplots(figsize=(15,15), nrows=2, sharex=True, dpi=200)
@@ -150,6 +155,7 @@ def plot_baseline():
 ##
 
 def plot_weak_scaling():
+  print(f"Plotting scaling benchmark to {relpath(path,cwd)}/figures/dual_gpu_scaling.pdf")
   df1 = pd.read_csv(fname_one_gpu_v1)
   df3 = pd.read_csv(fname_multi_gpu_v1)
   df2 = pd.read_csv(fname_multi_gpu_weak)
@@ -181,6 +187,7 @@ def plot_weak_scaling():
   plt.savefig(path + "figures/dual_gpu_scaling.pdf", bbox_inches='tight')
 
 def plot_pipeline():
+  print(f"Plotting pipeline benchmark from {relpath(fname_base_pipeline,cwd)} to {relpath(path,cwd)}/figures/pipeline.pdf")
   df_base_pipeline = pd.read_csv(fname_base_pipeline)
 
   fig, ax = plt.subplots(figsize=(20,10), nrows=1, sharex=True)
@@ -226,6 +233,7 @@ def plot_pipeline():
   plt.savefig(path + "figures/pipeline.pdf", bbox_inches='tight')
 
 def plot_lockstep_pipeline(normalize=False):
+  print(f"Plotting lockstep pipeline benchmark from {relpath(fname_full_pipeline,cwd)} to {relpath(path,cwd)}/figures/lockstep_pipeline.pdf")
   df_full_pipeline = pd.read_csv(fname_full_pipeline)
 
   fig, ax = plt.subplots(figsize=(20,10), nrows=1, sharex=True)
@@ -285,6 +293,7 @@ def plot_lockstep_pipeline(normalize=False):
 
 
 def plot_speedup():
+  print(f"Plotting single-GPU speedup benchmark from {relpath(fname_base,cwd)} and {relpath(fname_one_gpu_v1,cwd)} to {relpath(path,cwd)}/figures/speedup.pdf") 
   fig, ax = plt.subplots(figsize=(20,10), nrows=1, sharex=True)
   df_baseline = pd.read_csv(fname_base)
   df_dual_lockstep = pd.read_csv(fname_one_gpu_v1)
