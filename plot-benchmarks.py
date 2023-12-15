@@ -55,6 +55,8 @@ fname_single_gpu_bs = f'{path}single_gpu_bs.csv'
 fname_base_pipeline = f'{path}base_pipeline.csv'
 fname_full_pipeline = f'{path}full_pipeline.csv'
 
+os.makedirs(f"{path}/figures",exist_ok=True)
+
 colors = ["#1f77b4", "#d62728", "#9467bd", "#8c564b", "#e377c2"]
 CD = { "Baseline" : colors[0], "GPU_V0" : colors[1], "GPU_V1" : colors[2], "2 GPU_V0" :  colors[3] ,"2 GPU_V1" : colors[4]}
 
