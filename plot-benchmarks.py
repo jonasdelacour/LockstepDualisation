@@ -91,7 +91,7 @@ def plot_batch_size():
   ax.set_yscale('log')
   ax.set_xscale('log')
   ax.set_ylabel("Time / Graph [ns]")
-  ax.set_xlabel("Batch Size [1]")
+  ax.set_xlabel("Batch Size")
   add_line(ax, df_single_gpu_bs["BS"].to_numpy(), df_single_gpu_bs["T"].to_numpy(), df_single_gpu_bs["TSD"].to_numpy(), "Lockstep Parallel Dualization", CD["GPU_V1"], 'o', ':')
   ax.legend(loc='best')
 
@@ -112,7 +112,7 @@ def plot_batch_size():
   axins.set_yscale('log')
   axins.set_xscale('log')
   axins.set_ylabel("Time / Graph [ns]")
-  axins.set_xlabel("Batch Size [1]")
+  axins.set_xlabel("Batch Size")
   #Add line for the last 5 data points
   add_line(axins, df_single_gpu_bs["BS"].to_numpy()[-7:], df_single_gpu_bs["T"].to_numpy()[-7:], df_single_gpu_bs["TSD"].to_numpy()[-7:], "Lockstep Parallel Dualization", CD["GPU_V1"], 'o', ':')
   axins.xaxis.set_major_locator(MaxNLocator(integer=True))
@@ -147,8 +147,8 @@ def plot_baseline():
 
   ax[1].plot(df_base["N"].to_numpy(), df_base["T"].to_numpy() / df_base["N"].to_numpy(), 'o:', color=CD["Baseline"], label="Baseline Sequential Dualisation")
   ax[1].fill_between(df_base["N"].to_numpy(), (df_base["T"].to_numpy() - df_base["TSD"].to_numpy()*2) / df_base["N"].to_numpy(), (df_base["T"].to_numpy()+df_base["TSD"].to_numpy()*2) / df_base["N"].to_numpy(), color='k', alpha=0.1, label=r"2$\sigma$")
-  ax[1].set_ylabel(r"Time / Node [ns]")
-  ax[1].set_xlabel(r"Cubic Graph Size [\# Nodes]")
+  ax[1].set_ylabel(r"Time / Vertex [ns]")
+  ax[1].set_xlabel(r"Cubic Graph Size [\# Vertices]")
   ax[1].legend()
   plt.savefig(path + "figures/baseline.pdf", bbox_inches='tight')
 
@@ -180,8 +180,8 @@ def plot_weak_scaling():
   ax[1].fill_between(df1["N"].to_numpy(), df1["T"].to_numpy()/df3["T"].to_numpy() - std_1, df1["T"].to_numpy()/df3["T"].to_numpy() + std_1, alpha=0.1, color='k', label=r"1$\sigma$")
   ax[1].fill_between(df1["N"].to_numpy(), df1["T"].to_numpy()/df2["T"].to_numpy() - std_2, df1["T"].to_numpy()/df2["T"].to_numpy() + std_2, alpha=0.1, color='k')
   ax[1].hlines(2, 20, 200, linestyles='dashed', color='k', label=r"Perfect Scaling")
-  ax[1].set_ylabel("Speedup [1]")
-  ax[1].set_xlabel(r"Number of Nodes [\#]")
+  ax[1].set_ylabel("Speedup")
+  ax[1].set_xlabel(r"Cubic Graph Size [\# Vertices]")
   ax[1].set_ylim(0.95,2*1.05)
   ax[1].legend(loc='lower right', ncol=2)
   plt.savefig(path + "figures/dual_gpu_scaling.pdf", bbox_inches='tight')
@@ -226,7 +226,7 @@ def plot_pipeline():
 
   ax.set_ylabel(r"Time / Graph [$\mu$s]")
   ax.legend()
-  ax.set_xlabel(r"Isomerspace $C_N$ [1]")
+  ax.set_xlabel(r"Isomerspace $C_N$")
   ax.set_ylim(0,100)
   #percentage formatting
   ax.yaxis.set_major_formatter(ticker.PercentFormatter())
@@ -283,7 +283,7 @@ def plot_lockstep_pipeline(normalize=False):
 
   ax.set_ylabel(r"Runtime Fraction [$\%$]") if normalize else ax.set_ylabel(r"Time / Graph [$\mu$s]")
   ax.legend()
-  ax.set_xlabel(r"Isomerspace $C_N$ [1]")
+  ax.set_xlabel(r"Isomerspace $C_N$")
   if normalize:
     ax.set_ylim(0,100)
   #percentage formatting
@@ -310,9 +310,9 @@ def plot_speedup():
 
   ax.plot(natoms, speedup, 'o:', color="r", label="Speedup")
   ax.fill_between(natoms, speedup - speedup_sd, speedup + speedup_sd, alpha=0.1, color='k')
-  ax.set_ylabel(r"Speedup [1]")
+  ax.set_ylabel(r"Speedup")
   ax.legend()
-  ax.set_xlabel(r"Isomerspace $C_N$ [1]")
+  ax.set_xlabel(r"Isomerspace $C_N$")
   plt.savefig(path + "figures/speedup.pdf", bbox_inches='tight')
 
 plot_batch_size()
