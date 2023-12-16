@@ -240,10 +240,12 @@ def plot_pipeline(normalize=False):
   ax.set_ylabel(r"Runtime Fraction [$\%$]") if normalize else ax.set_ylabel(r"Time / Graph [$\mu$s]")
   ax.legend()
   ax.set_xlabel(r"Isomerspace $C_N$")
-  ax.set_ylim(0,100)
+  if normalize:
+    ax.set_ylim(0,100)
   #percentage formatting
-  ax.yaxis.set_major_formatter(ticker.PercentFormatter())
-  plt.savefig(path + "figures/pipeline.pdf", bbox_inches='tight')
+  ax.yaxis.set_major_formatter(ticker.PercentFormatter()) if normalize else ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
+  normalized_str = "" if not normalize else "_normalized"
+  plt.savefig(path + "figures/pipeline" + normalized_str + ".pdf", bbox_inches='tight')
 
 def plot_lockstep_pipeline(normalize=False):
   print(f"Plotting lockstep pipeline benchmark from {relpath(fname_full_pipeline,cwd)} to {relpath(path,cwd)}/figures/lockstep_pipeline.pdf")
