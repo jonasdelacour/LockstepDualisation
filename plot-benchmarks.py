@@ -230,25 +230,13 @@ def plot_pipeline(normalize=False):
     plot_normalized_line(ax, natoms, gen, gen_sd, "Isomer-space graph generation", CD["Generate"], 'o', ':', False)
     plot_normalized_line(ax, natoms, parallel, parallel_sd, "Lockstep-parallel geometry optimization", "k", '*', ':')
     plot_normalized_line(ax, natoms, overhead, overhead_sd, "Overhead", "blue", 'o', ':')
-    plot_normalized_line(ax, natoms, dual, dual_sd, "Baseline Sequential Dualization", CD["Dual"], '*', ':')
+    plot_normalized_line(ax, natoms, dual, dual_sd, "Baseline sequential dualization", CD["Dual"], '*', ':')
   else:
     plot_absolute_line(ax, natoms, parallel, parallel_sd, "Lockstep-parallel geometry optimization", "k", '*', ':')
     plot_absolute_line(ax, natoms, gen, gen_sd, "Isomer-space graph generation", CD["Generate"], 'o', ':', False)
     plot_absolute_line(ax, natoms, overhead, overhead_sd, "Overhead", "blue", 'o', ':')
-    plot_absolute_line(ax, natoms, dual, dual_sd, "Lockstep-parallel dualization", CD["Dual"], '*', ':')
+    plot_absolute_line(ax, natoms, dual, dual_sd, "Baseline sequential dualization", CD["Dual"], '*', ':')
       
-
-  if normalize:
-    plot_normalized_line(ax, natoms, gen, gen_sd, "Isomer-space graph generation", CD["Generate"], 'o', ':', False)
-    plot_normalized_line(ax, natoms, parallel, parallel_sd, "Lockstep-parallel geometry optimization", "k", '*', ':')
-    plot_normalized_line(ax, natoms, overhead, overhead_sd, "Overhead", "blue", 'o', ':')
-    plot_normalized_line(ax, natoms, dual, dual_sd, "Baseline Sequential Dualization", CD["Dual"], '*', ':')
-  else:
-    plot_absolute_line(ax, natoms, parallel, parallel_sd, "Lockstep-parallel geometry optimization", "k", '*', ':')
-    plot_absolute_line(ax, natoms, gen, gen_sd, "Isomer-space graph generation", CD["Generate"], 'o', ':', False)
-    plot_absolute_line(ax, natoms, overhead, overhead_sd, "Overhead", "blue", 'o', ':')
-    plot_absolute_line(ax, natoms, dual, dual_sd, "Lockstep-parallel dualization", CD["Dual"], '*', ':')
-
   ax.set_ylabel(r"Runtime Fraction [$\%$]") if normalize else ax.set_ylabel(r"Time / Graph [$\mu$s]")
   ax.legend()
   ax.set_xlabel(r"Isomerspace $C_N$")
@@ -299,7 +287,7 @@ def plot_lockstep_pipeline(normalize=False):
     plot_normalized_line(ax, natoms, gen, gen_sd, "Isomer-space graph generation", CD["Generate"], 'o', ':', False)
     plot_normalized_line(ax, natoms, parallel, parallel_sd, "Lockstep-parallel geometry optimization", "k", '*', ':')
     plot_normalized_line(ax, natoms, overhead, overhead_sd, "Overhead", "blue", 'o', ':')
-    plot_normalized_line(ax, natoms, dual, dual_sd, "Baseline Sequential Dualization", CD["Dual"], '*', ':')
+    plot_normalized_line(ax, natoms, dual, dual_sd, "Lockstep-parallel dualization", CD["Dual"], '*', ':')
   else:
     plot_absolute_line(ax, natoms, parallel, parallel_sd, "Lockstep-parallel geometry optimization", "k", '*', ':')
     plot_absolute_line(ax, natoms, gen, gen_sd, "Isomer-space graph generation", CD["Generate"], 'o', ':', False)
