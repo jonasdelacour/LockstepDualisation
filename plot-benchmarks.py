@@ -188,7 +188,7 @@ def plot_weak_scaling():
   ax[1].legend(loc='lower right', ncol=2)
   plt.savefig(path + "figures/dual_gpu_scaling.pdf", bbox_inches='tight')
 
-def plot_pipeline():
+def plot_pipeline(normalize=False):
   print(f"Plotting pipeline benchmark from {relpath(fname_base_pipeline,cwd)} to {relpath(path,cwd)}/figures/pipeline.pdf")
   df_base_pipeline = pd.read_csv(fname_base_pipeline)
 
@@ -213,20 +213,43 @@ def plot_pipeline():
   parallel_sd = np.sqrt(opt_sd**2 + tutte_sd**2 + project_sd**2)
   total = parallel + overhead + gen + dual
 
-  def plot_line_normalized(ax, x, y, y_sd, label, color, marker, linestyle, mfc_bool=True):
+  def plot_normalized_line(ax, x, y, y_sd, label, color, marker, linestyle, mfc_bool=True):
       if mfc_bool:
           ax.plot(x, 1e2* y/total, marker=marker, color=color, label=label, linestyle=linestyle, mfc=color) #Normalized to total time, shown as percentage
       else:
           ax.plot(x, 1e2* y/total, marker=marker, color=color, label=label, linestyle=linestyle, mfc="None") #Normalized to total time, shown as percentage
       ax.fill_between(x, 1e2*(y - y_sd)/total, 1e2*(y + y_sd)/total, alpha=0.1, color='k')
 
+  def plot_absolute_line(ax, x, y, y_sd, label, color, marker, linestyle, mfc_bool=True):
+    if mfc_bool:
+        ax.plot(x,  y/1e3, marker=marker, color=color, label=label, linestyle=linestyle, mfc=color) #Normalized to total time, shown as percentage
+    else:
+        ax.plot(x,  y/1e3, marker=marker, color=color, label=label, linestyle=linestyle, mfc="None") #Normalized to total time, shown as percentage
+    ax.fill_between(x, (y - y_sd)/1e3, (y + y_sd)/1e3, alpha=0.1, color='k')
+  if normalize:
+    plot_normalized_line(ax, natoms, gen, gen_sd, "Isomer-space graph generation", CD["Generate"], 'o', ':', False)
+    plot_normalized_line(ax, natoms, parallel, parallel_sd, "Lockstep-parallel geometry optimization", "k", '*', ':')
+    plot_normalized_line(ax, natoms, overhead, overhead_sd, "Overhead", "blue", 'o', ':')
+    plot_normalized_line(ax, natoms, dual, dual_sd, "Baseline Sequential Dualization", CD["Dual"], '*', ':')
+  else:
+    plot_absolute_line(ax, natoms, parallel, parallel_sd, "Lockstep-parallel geometry optimization", "k", '*', ':')
+    plot_absolute_line(ax, natoms, gen, gen_sd, "Isomer-space graph generation", CD["Generate"], 'o', ':', False)
+    plot_absolute_line(ax, natoms, overhead, overhead_sd, "Overhead", "blue", 'o', ':')
+    plot_absolute_line(ax, natoms, dual, dual_sd, "Lockstep-parallel dualization", CD["Dual"], '*', ':')
+      
 
-  plot_line_normalized(ax, natoms, gen, gen_sd, "Isomer-space graph generation", CD["Generate"], 'o', ':', False)
-  plot_line_normalized(ax, natoms, dual, dual_sd, "Baseline Sequential Dualization", CD["Dual"], 'o', ':', False)
-  plot_line_normalized(ax, natoms, parallel, parallel_sd, "Lockstep-parallel geometry optimization", "k", '*', ':')
-  plot_line_normalized(ax, natoms, overhead, overhead_sd, "Overhead", "blue", 'o', ':')
+  if normalize:
+    plot_normalized_line(ax, natoms, gen, gen_sd, "Isomer-space graph generation", CD["Generate"], 'o', ':', False)
+    plot_normalized_line(ax, natoms, parallel, parallel_sd, "Lockstep-parallel geometry optimization", "k", '*', ':')
+    plot_normalized_line(ax, natoms, overhead, overhead_sd, "Overhead", "blue", 'o', ':')
+    plot_normalized_line(ax, natoms, dual, dual_sd, "Baseline Sequential Dualization", CD["Dual"], '*', ':')
+  else:
+    plot_absolute_line(ax, natoms, parallel, parallel_sd, "Lockstep-parallel geometry optimization", "k", '*', ':')
+    plot_absolute_line(ax, natoms, gen, gen_sd, "Isomer-space graph generation", CD["Generate"], 'o', ':', False)
+    plot_absolute_line(ax, natoms, overhead, overhead_sd, "Overhead", "blue", 'o', ':')
+    plot_absolute_line(ax, natoms, dual, dual_sd, "Lockstep-parallel dualization", CD["Dual"], '*', ':')
 
-  ax.set_ylabel(r"Time / Graph [$\mu$s]")
+  ax.set_ylabel(r"Runtime Fraction [$\%$]") if normalize else ax.set_ylabel(r"Time / Graph [$\mu$s]")
   ax.legend()
   ax.set_xlabel(r"Isomerspace $C_N$")
   ax.set_ylim(0,100)
@@ -320,7 +343,8 @@ def plot_speedup():
 plot_batch_size()
 plot_baseline()
 plot_weak_scaling()
-plot_pipeline()
+plot_pipeline(normalize=True)
+plot_pipeline(normalize=False)
 plot_lockstep_pipeline(normalize=True)
 plot_lockstep_pipeline(normalize=False)
 plot_speedup()
