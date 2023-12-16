@@ -60,6 +60,38 @@ os.makedirs(f"{path}/figures",exist_ok=True)
 colors = ["#1f77b4", "#d62728", "#9467bd", "#8c564b", "#e377c2"]
 CD = { "Baseline" : colors[0], "GPU_V0" : colors[1], "GPU_V1" : colors[2], "2 GPU_V0" :  colors[3] ,"2 GPU_V1" : colors[4]}
 
+def plot_dual_bench():
+    print(f"Plotting batch size benchmark from {relpath(fname_multi_gpu_v0,cwd)} to {relpath(path,cwd)}/figures/kernel_benchmark.pdf")
+    df0 = pd.read_csv(fname_multi_gpu_v0)
+    df1 = pd.read_csv(fname_multi_gpu_v1)
+
+    fig, ax = plt.subplots(figsize=(15,15), nrows=2, sharex=True, dpi=200)
+    ax[0].plot(df0["N"].to_numpy(), df1["T"].to_numpy(), 'o:', color=CD["2 GPU_V1"], label=KName1)
+    ax[0].plot(df0["N"].to_numpy(), df0["T"].to_numpy(), 'o:', color=CD["2 GPU_V0"], label=KName0)
+    ax[0].fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2), color='k', alpha=0.1, label=r"2$\sigma$")
+    ax[0].fill_between(df0["N"].to_numpy(), (df1["T"].to_numpy() - df1["TSD"].to_numpy()*2), (df1["T"].to_numpy()+df1["TSD"].to_numpy()*2), color='k', alpha=0.1)
+    ylow = ax[0].get_ylim()[0]
+    yhigh = ax[0].get_ylim()[1]
+    ax[0].vlines(96, ylow, yhigh, color=CD["2 GPU_V0"], linestyle='--', label=r"Saturation Kernel 0")
+    ax[0].vlines(188, ylow, yhigh, color=CD["2 GPU_V1"], linestyle='--', label=r"Saturation Kernel 1")
+    ax[0].set_ylabel(r"Time / Graph [ns]")
+    ax[0].set_ymargin(0.0)
+    ax[0].legend(loc="upper left")
+
+    ax[1].plot(df0["N"].to_numpy(), df1["T"].to_numpy()*1e3 / df0["N"].to_numpy(), 'o:', color=CD["2 GPU_V1"], label=KName1)
+    ax[1].plot(df0["N"].to_numpy(), df0["T"].to_numpy()*1e3 / df0["N"].to_numpy(), 'o:', color=CD["2 GPU_V0"], label=KName0)
+    ax[1].fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2)*1e3 / df0["N"].to_numpy(), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2)*1e3 / df0["N"].to_numpy(), color='k', alpha=0.1, label=r"2$\sigma$")
+    ax[1].fill_between(df0["N"].to_numpy(), (df1["T"].to_numpy() - df1["TSD"].to_numpy()*2)*1e3 / df0["N"].to_numpy(), (df1["T"].to_numpy()+df1["TSD"].to_numpy()*2)*1e3 / df0["N"].to_numpy(), color='k', alpha=0.1)
+    ylow = ax[1].get_ylim()[0]
+    yhigh = ax[1].get_ylim()[1]
+    ax[1].vlines(96, ylow, yhigh, color=CD["2 GPU_V0"], linestyle='--', label=r"Kernel 0 Saturation")
+    ax[1].vlines(188, ylow, yhigh, color=CD["2 GPU_V1"], linestyle='--', label=r"Kernel 1 Saturation")
+    ax[1].legend(bbox_to_anchor=(0.5, 0.9))
+    ax[1].set_ymargin(0.0)
+    ax[1].set_xlabel(r"Cubic Graph Size [\# Vertices]")
+    ax[1].set_ylabel(r"Time / Vertex [ps]")
+    plt.savefig(f"{path}/figures/kernel_benchmark.pdf", bbox_inches='tight')
+
 def adjust_brightness(color, amount):
     """Adjust the brightness of a color by a given amount (-1 to 1)."""
     # Convert the color to the RGB color space
@@ -247,7 +279,7 @@ def plot_pipeline(normalize=False):
   normalized_str = "" if not normalize else "_normalized"
   plt.savefig(path + "figures/pipeline" + normalized_str + ".pdf", bbox_inches='tight')
 
-def plot_lockstep_pipeline(normalize=False):
+def plot_lockstep_pipeline(normalize=False, log=False):
   print(f"Plotting lockstep pipeline benchmark from {relpath(fname_full_pipeline,cwd)} to {relpath(path,cwd)}/figures/lockstep_pipeline.pdf")
   df_full_pipeline = pd.read_csv(fname_full_pipeline)
 
@@ -285,16 +317,26 @@ def plot_lockstep_pipeline(normalize=False):
     else:
         ax.plot(x,  y/1e3, marker=marker, color=color, label=label, linestyle=linestyle, mfc="None") #Normalized to total time, shown as percentage
     ax.fill_between(x, (y - y_sd)/1e3, (y + y_sd)/1e3, alpha=0.1, color='k')
+
+  def plot_logabsolute_line(ax, x, y, y_sd, label, color, marker, linestyle, mfc_bool=True):
+    ax.set_yscale("log")
+    if mfc_bool:
+        ax.plot(x,  y/1e3, marker=marker, color=color, label=label, linestyle=linestyle, mfc=color) #Normalized to total time, shown as percentage
+    else:
+        ax.plot(x,  y/1e3, marker=marker, color=color, label=label, linestyle=linestyle, mfc="None") #Normalized to total time, shown as percentage
+    ax.fill_between(x, (y - y_sd)/1e3 + ((y-y_sd)<0)*y_sd/1e3, (y + y_sd)/1e3, alpha=0.1, color='k')    
+
   if normalize:
-    plot_normalized_line(ax, natoms, gen, gen_sd, "Isomer-space graph generation", CD["Generate"], 'o', ':', False)
-    plot_normalized_line(ax, natoms, parallel, parallel_sd, "Lockstep-parallel geometry optimization", "k", '*', ':')
-    plot_normalized_line(ax, natoms, overhead, overhead_sd, "Overhead", "blue", 'o', ':')
-    plot_normalized_line(ax, natoms, dual, dual_sd, "Lockstep-parallel dualization", CD["Dual"], '*', ':')
+      plot_fun = plot_normalized_line
+  elif log:
+      plot_fun = plot_logabsolute_line
   else:
-    plot_absolute_line(ax, natoms, parallel, parallel_sd, "Lockstep-parallel geometry optimization", "k", '*', ':')
-    plot_absolute_line(ax, natoms, gen, gen_sd, "Isomer-space graph generation", CD["Generate"], 'o', ':', False)
-    plot_absolute_line(ax, natoms, overhead, overhead_sd, "Overhead", "blue", 'o', ':')
-    plot_absolute_line(ax, natoms, dual, dual_sd, "Lockstep-parallel dualization", CD["Dual"], '*', ':')
+      plot_fun = plot_absolute_line
+      
+  plot_fun(ax, natoms, parallel, parallel_sd, "Lockstep-parallel geometry optimization", "k", '*', ':')
+  plot_fun(ax, natoms, gen, gen_sd, "Isomer-space graph generation", CD["Generate"], 'o', ':', False)
+  plot_fun(ax, natoms, overhead, overhead_sd, "Overhead", "blue", 'o', ':')
+  plot_fun(ax, natoms, dual, dual_sd, "Lockstep-parallel dualization", CD["Dual"], '*', ':')
 
   ax.set_ylabel(r"Runtime Fraction [$\%$]") if normalize else ax.set_ylabel(r"Time / Graph [$\mu$s]")
   ax.legend()
@@ -304,7 +346,8 @@ def plot_lockstep_pipeline(normalize=False):
   #percentage formatting
   ax.yaxis.set_major_formatter(ticker.PercentFormatter()) if normalize else ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
   normalized_str = "" if not normalize else "_normalized"
-  plt.savefig(path + "figures/lockstep_pipeline" + normalized_str + ".pdf", bbox_inches='tight')
+  log_str = "" if not log else "_log"  
+  plt.savefig(f"{path}/figures/lockstep_pipeline{normalized_str}{log_str}.pdf", bbox_inches='tight')
 
 
 def plot_speedup():
@@ -337,7 +380,9 @@ plot_pipeline(normalize=True)
 plot_pipeline(normalize=False)
 plot_lockstep_pipeline(normalize=True)
 plot_lockstep_pipeline(normalize=False)
+plot_lockstep_pipeline(normalize=False, log=True)
 plot_speedup()
+plot_dual_bench()
 
 
 
