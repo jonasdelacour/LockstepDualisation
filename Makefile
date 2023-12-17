@@ -11,7 +11,7 @@ configure:
 	mkdir -p ${output_dir}
 	cd build ; ccmake .. -DCMAKE_BUILD_TYPE=Release ; cd -
 
-build/CmakeCache.txt: configure
+build/CMakeCache.txt: configure
 
 binaries: build/CMakeCache.txt
 	cd build ; make -j ; cd -
