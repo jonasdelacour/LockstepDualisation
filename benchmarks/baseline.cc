@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
     auto BuckyQ = BuckyGen::start(N);
     bool more_isomers = false;
     int isomer_ix     = 0;
-    while((isomer_ix<N_graphs) && (more_isomers = BuckyGen::next_fullerene(BuckyQ,in_graphs[isomer_ix]))) {in_graphs[isomer_ix].update(); isomer_ix++; }
+    while((isomer_ix<N_graphs) && (more_isomers = BuckyGen::next_fullerene(BuckyQ,in_graphs[isomer_ix]))) { isomer_ix++; }
     if(!more_isomers)		// If isomer space is too small, repeat to fill buffer.
       for(int i=isomer_ix-1;i<N_graphs;i++) in_graphs[i] = in_graphs[i%isomer_ix];
 
@@ -46,8 +46,10 @@ int main(int argc, char** argv) {
     
     for(int i=0;i<N_warmup+N_runs;i++){
       auto T0 = steady_clock::now();      
-      for(int j=0;j<N_graphs;j++)
-	PlanarGraph G = in_graphs[j].dual_graph();
+      for(int j=0;j<N_graphs;j++){
+	in_graphs[isomer_ix].update();              // Computes triangles/faces -- part of dualization algorithm we want to time
+	PlanarGraph G = in_graphs[j].dual_graph();  // Computes the dual graph given the faces.
+      }
       auto T1 = steady_clock::now();
       if(i >= N_warmup) times[i-N_warmup] = duration<double,std::nano>(T1-T0).count();
     }
