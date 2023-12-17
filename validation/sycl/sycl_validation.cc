@@ -49,8 +49,8 @@ int main(int argc, char** argv) {
         std::vector<PlanarGraph> cubic_truth(N_graphs);
 
 	auto BuckyQ = BuckyGen::start(N,only_IPR,only_symmetric,0,1); 
-        bool more_isomers = bucky_fill(batch,BuckyQ);
-	if(!more_isomers) BuckyGen::stop(BuckyQ);
+        bucky_fill(batch,BuckyQ);
+	BuckyGen::stop(BuckyQ);
 	
         //This scope is necessary to ensure that the host accessors are destroyed before the dualisation, otherwise dualise will block execution forever.
         {

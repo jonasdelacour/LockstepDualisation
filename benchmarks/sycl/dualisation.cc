@@ -83,8 +83,8 @@ int main(int argc, char** argv) {
 
     vector<IsomerBatch<float,uint16_t>> batches; for(int i = 0; i < N_d; i++) batches.push_back(IsomerBatch<float,uint16_t>(N, N_graphs/N_d + N_graphs%N_d));
 
-    for(int i = 0; i < N_d; i++) fill(batches[i]);
-
+    
+    for(int i = 0; i < N_d; i++) bucky_fill(batches[i],i,N_d);
 
     vector<double> times(N_runs); //Times in nanoseconds.
     for (size_t i = 0; i < (N_runs + N_warmup); i++)
