@@ -64,7 +64,7 @@ void fill(IsomerBatch<T,K>& B, int set_div,int offset) {
 // This will be very slow, as it will incur the (substantial) overhead of starting up BuckyGen for every batch.
 // Also, it doesn't work with IPR or symmetric molecules.
 template <typename T, typename K>
-void bucky_fill(IsomerBatch<T,K>& B, int ntasks, int mytask_id) {
+void bucky_fill(IsomerBatch<T,K>& B, int mytask_id, int ntasks) {
   int N = B.n_atoms;
   int Nf = B.n_faces;
   int N_graphs = B.m_capacity;
