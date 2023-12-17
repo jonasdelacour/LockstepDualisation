@@ -24,8 +24,9 @@ vector<sycl::queue> get_device_queues(bool want_gpus){
       if (use_this_device){
 	N_d++;
 	Qs.push_back(sycl::queue(device));
-	printf("Using %s device %s with %d compute-units.\n",
-	       platform.get_info<sycl::info::platform::name>().c_str(),		   
+	printf("Found %s device #%ld: %s with %d compute-units.\n",
+	       platform.get_info<sycl::info::platform::name>().c_str(),
+	       Qs.size(),
 	       device.get_info<sycl::info::device::name>().c_str(),
 	       device.get_info<sycl::info::device::max_compute_units>());
       }
