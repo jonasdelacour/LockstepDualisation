@@ -2,7 +2,7 @@
 
 # %% Set up benchmark parameters
 SYCL_setvars = '/opt/intel/oneapi/setvars.sh'
-batch_size=20000
+batch_size=2**15
 gen_batch_size=3000000 
 Ngpu_runs = 20 #Set to 100 for more accurate results, much smaller standard deviation.
 Ncpu_runs = 20 #Set to 100 for more accurate results, much smaller standard deviation.
@@ -93,7 +93,7 @@ def bench_batchsize():
 def bench_baseline():
     reset_file(f'{path}/base.csv')
     for i in range(20,201,2):
-        os.system(f'{buildpath}benchmarks/baseline {i} {2**(6+OFFSET_BS)} {Ncpu_runs} {Ncpu_warmup} 0 {path}/base.csv')
+        os.system(f'{buildpath}benchmarks/baseline {i} {2**(8+OFFSET_BS)} {Ncpu_runs} {Ncpu_warmup} 0 {path}/base.csv')
     
 def bench_dualize():
     reset_file(f'{path}/one_gpu_v0.csv')
