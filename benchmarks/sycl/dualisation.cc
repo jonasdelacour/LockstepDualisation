@@ -13,6 +13,27 @@ using namespace std::chrono_literals;
 using namespace std::chrono;
 using namespace std;
 
+
+vector<sycl::queue> get_device_queues(bool want_gpus){
+  int N_d = 0;
+  vector<sycl::queue> Qs;
+  for (auto platform : sycl::platform::get_platforms()) 
+    for (auto device : platform.get_devices()) {
+      bool use_this_device = (want_gpus && device.is_gpu())  || (!want_gpus && device.is_cpu() &&
+								 (N_d<1/* NB: Sometimes SYCL reports the same CPU twice, leading to death and pain. */));
+      if (use_this_device){
+	N_d++;
+	Qs.push_back(sycl::queue(device));
+	printf("Using %s device %s with %d compute-units.\n",
+	       platform.get_info<sycl::info::platform::name>().c_str(),		   
+	       device.get_info<sycl::info::device::name>().c_str(),
+	       device.get_info<sycl::info::device::max_compute_units>());
+      }
+    }
+  return Qs;
+}
+
+
 int main(int argc, char** argv) {
     // Make user be explicit about which device we want to test, to avoid surprises.
     if(argc < 2 || (string(argv[1]) != "cpu" && string(argv[1]) != "gpu")){
@@ -36,29 +57,10 @@ int main(int argc, char** argv) {
 	 << " warmup runs." << endl;
 
     // Get all appropriate devices
-    int N_d = 0;
-    vector<sycl::queue> Qs;
-    for (auto platform : sycl::platform::get_platforms())
-    {
-        cout << "Platform: "
-                  << platform.get_info<sycl::info::platform::name>()
-                  << endl;
 
-        for (auto device : platform.get_devices())
-        {
-	  bool use_this_device = (want_gpus && device.is_gpu())  || (!want_gpus && device.is_cpu() &&
-								     (N_d<1/* NB: Sometimes SYCL reports the same CPU twice, leading to death and pain. */));
-	  
-	  if (use_this_device){
-	    N_d++;
-	    Qs.push_back(sycl::queue(device));
-	  }
-	  printf("\t%s: %s has %d compute-units.\n",
-		 use_this_device? "USING    ":"NOT USING",
-		 device.get_info<sycl::info::device::name>().c_str(),
-		 device.get_info<sycl::info::device::max_compute_units>());
-        }
-    }
+    vector<sycl::queue> Qs = get_device_queues(want_gpus);
+    int N_d = Qs.size();
+    
     if (N_d < N_gpus)
     {
         cout << "Not enough devices available. Exiting." << endl;
