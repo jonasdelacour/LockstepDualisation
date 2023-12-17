@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
     for(int i=0;i<N_warmup+N_runs;i++){
       auto T0 = steady_clock::now();      
       for(int j=0;j<N_graphs;j++){
-	in_graphs[isomer_ix].update();              // Computes triangles/faces -- part of dualization algorithm we want to time
+	in_graphs[j].update();              // Computes triangles/faces -- part of dualization algorithm we want to time
 	PlanarGraph G = in_graphs[j].dual_graph();  // Computes the dual graph given the faces.
       }
       auto T1 = steady_clock::now();
