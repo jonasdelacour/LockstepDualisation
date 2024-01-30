@@ -6,10 +6,16 @@ enum ForcefieldType {WIRZ, PEDERSEN, FLATNESS_ENABLED, FLAT_BOND, BOND, ANGLE, D
 #define SYCLBATCH
 #include "isomer_batch.h"
 template <int MaxDegree, typename T, typename K>
-void dualise_sycl_v0            (sycl::queue& Q, IsomerBatch<T,K>& B, const LaunchPolicy policy = LaunchPolicy::SYNC);
+void dualise_sycl_v1            (sycl::queue& Q, IsomerBatch<T,K>& B, const LaunchPolicy policy = LaunchPolicy::SYNC);
 
 template <int MaxDegree, typename T, typename K>
-void dualise_sycl_v1            (sycl::queue&Q, IsomerBatch<T,K>& B, const LaunchPolicy policy = LaunchPolicy::SYNC);
+void dualise_sycl_v2            (sycl::queue&Q, IsomerBatch<T,K>& B, const LaunchPolicy policy = LaunchPolicy::SYNC);
+
+template <int MaxDegree, typename T, typename K>
+void dualise_sycl_v3            (sycl::queue&Q, IsomerBatch<T,K>& B, const LaunchPolicy policy = LaunchPolicy::SYNC);
+
+template <int MaxDegree, typename T, typename K>
+void dualise_sycl_v4            (sycl::queue&Q, IsomerBatch<T,K>& B, const LaunchPolicy policy = LaunchPolicy::SYNC);
 
 template <typename T, typename K>
 void tutte_layout_sycl          (sycl::queue&Q, IsomerBatch<T,K>& B, const LaunchPolicy policy = LaunchPolicy::SYNC);
