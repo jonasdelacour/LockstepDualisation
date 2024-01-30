@@ -85,9 +85,13 @@ int main(int argc, char** argv) {
             return 0;
         };
 
-        dualise_sycl_v0<6>(Q, batch);
-        if (check_graphs()) return 1;
         dualise_sycl_v1<6>(Q, batch);
+        if (check_graphs()) return 1;
+        dualise_sycl_v2<6>(Q, batch);
+        if (check_graphs()) return 1;
+        dualise_sycl_v3<6>(Q, batch);
+        if (check_graphs()) return 1;
+        dualise_sycl_v4<6>(Q, batch);
         if (check_graphs()) return 1;
 
 	total_validated += N_graphs;

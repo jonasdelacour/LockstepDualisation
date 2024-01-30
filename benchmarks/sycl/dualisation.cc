@@ -94,10 +94,16 @@ int main(int argc, char** argv) {
             switch (version)
             {
             case 0:
-                for(int j = 0; j < N_d; j++) {dualise_sycl_v0<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);}   //Dualise the batch.
+                for(int j = 0; j < N_d; j++) {dualise_sycl_v1<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);}   //Dualise the batch.
                 break;
             case 1:
-                for(int j = 0; j < N_d; j++) {dualise_sycl_v1<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);}    //Dualise the batch.
+                for(int j = 0; j < N_d; j++) {dualise_sycl_v2<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);}    //Dualise the batch.
+                break;
+            case 2:
+                for(int j = 0; j < N_d; j++) {dualise_sycl_v3<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);}    //Dualise the batch.
+                break;
+            case 3:
+                for(int j = 0; j < N_d; j++) {dualise_sycl_v4<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);}    //Dualise the batch.
                 break;
             default:
                 break;
@@ -108,10 +114,16 @@ int main(int argc, char** argv) {
             switch (version)
             {
             case 0:
-                for(int j = 0; j < N_d; j++) dualise_sycl_v0<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);    //Dualise the batch.
+                for(int j = 0; j < N_d; j++) dualise_sycl_v1<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);    //Dualise the batch.
                 break;
             case 1:
-                for(int j = 0; j < N_d; j++) dualise_sycl_v1<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);    //Dualise the batch.
+                for(int j = 0; j < N_d; j++) dualise_sycl_v2<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);    //Dualise the batch.
+                break;
+            case 2:
+                for(int j = 0; j < N_d; j++) dualise_sycl_v3<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);    //Dualise the batch.
+                break;
+            case 3:
+                for(int j = 0; j < N_d; j++) dualise_sycl_v4<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);    //Dualise the batch.
                 break;
             default:
                 break;
