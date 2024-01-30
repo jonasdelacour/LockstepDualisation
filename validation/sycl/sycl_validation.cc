@@ -13,25 +13,30 @@
 int main(int argc, char** argv) {
     // Make user be explicit about which device we want to test, to avoid surprises.
     if(argc < 2 || (string(argv[1]) != "cpu" && string(argv[1]) != "gpu")){
-      fprintf(stderr, "Syntax: %s <cpu|gpu> [N_start:20] [N_end:200]\n",argv[0]);
+      fprintf(stderr, "Syntax: %s <cpu|gpu> [N_start:20] [N_end:200] [only_IPR:0] [only_symmetric:0]\n",argv[0]);
       return -1;
     }
     
     std::string device_type = argv[1];
-    size_t start_range = argc > 2 ? std::stoi(argv[2]) : 20;
-    size_t end_range = argc > 3 ? std::stoi(argv[3]) : 200;
+    size_t start_range  = argc > 2 ? std::stoi(argv[2]) : 20;
+    size_t end_range    = argc > 3 ? std::stoi(argv[3]) : 200;
+    bool only_IPR       = argc > 4 ? std::stoi(argv[4]) : 0;
+    bool only_symmetric = argc > 5 ? std::stoi(argv[5]) : 0;    
 
+    
     auto selector =  device_type == "cpu" ? sycl::cpu_selector_v : sycl::gpu_selector_v;
     auto Q = sycl::queue(selector);
 
+    
     printf("Validating SYCL implementation for %s device: %s.\n",
 	   argv[1], Q.get_device().get_info<sycl::info::device::name>().c_str());
     size_t total_validated = 0;
     for (size_t N = start_range; N <= end_range; N+=2) {
         if (N == 22) continue;
         int Nf = N/2 + 2;
-        int N_graphs = min<size_t>(10000, IsomerDB::number_isomers(N));
-
+        int N_graphs = min<size_t>(10000, IsomerDB::number_isomers(N,only_symmetric?"Nontrivial":"Any",only_IPR));
+	if(N_graphs == 0) continue;
+	
 	printf("Validating dualization of %d C%ld-isomers against reference results.\n",N_graphs,N);
 	
 	
@@ -43,7 +48,10 @@ int main(int argc, char** argv) {
         }
         std::vector<PlanarGraph> cubic_truth(N_graphs);
 
-        fill(batch);
+	auto BuckyQ = BuckyGen::start(N,only_IPR,only_symmetric,0,1); 
+        bucky_fill(batch,BuckyQ);
+	BuckyGen::stop(BuckyQ);
+	
         //This scope is necessary to ensure that the host accessors are destroyed before the dualisation, otherwise dualise will block execution forever.
         {
             sycl::host_accessor<uint16_t,1> h_cubic_neighbours(batch.cubic_neighbours);
@@ -62,8 +70,6 @@ int main(int argc, char** argv) {
             }
         }
         
-
-
 
         //Check that the results are correct.
         //Create lambda function to check if two graphs are equal.

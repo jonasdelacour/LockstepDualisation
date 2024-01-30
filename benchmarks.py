@@ -2,10 +2,10 @@
 
 # %% Set up benchmark parameters
 SYCL_setvars = '/opt/intel/oneapi/setvars.sh'
-batch_size=20000
+batch_size=2**15
 gen_batch_size=3000000 
-Ngpu_runs = 100 #Set to 100 for more accurate results, much smaller standard deviation.
-Ncpu_runs = 100 #Set to 100 for more accurate results, much smaller standard deviation.
+Ngpu_runs = 20 #Set to 100 for more accurate results, much smaller standard deviation.
+Ncpu_runs = 20 #Set to 100 for more accurate results, much smaller standard deviation.
 Ncpu_warmup = 1 #Warmup caches and branch predictor.
 Ngpu_warmup = 1 #No branch prediction on GPU, but SYCL runtime incurs overhead the first time each kernel is run.
 #Change this number if the simulation is taking too long.
@@ -26,7 +26,7 @@ pathlib.Path(f"{path}/figures").mkdir(parents=True, exist_ok=True)
 
 if(len(sys.argv)<2):
     print(f"Syntax: {sys.argv[0]} <task>\n"+
-          "Where task is one of: 'all', 'batchsize', 'dualize', 'generate', or 'pipeline'.\n");
+          "Where task is one of: 'all', 'batchsize', 'baseline', 'dualize', 'generate', 'pipeline', or 'validate'.\n");
     exit(-1)
     
 task = sys.argv[1]
@@ -90,8 +90,12 @@ def bench_batchsize():
         
 # # ### Run the benchmarks
 
-def bench_dualize():
+def bench_baseline():
     reset_file(f'{path}/base.csv')
+    for i in range(20,201,2):
+        os.system(f'{buildpath}benchmarks/baseline {i} {2**(8+OFFSET_BS)} {Ncpu_runs} {Ncpu_warmup} 0 {path}/base.csv')
+    
+def bench_dualize():
     reset_file(f'{path}/one_gpu_v0.csv')
     reset_file(f'{path}/one_gpu_v1.csv')
     reset_file(f'{path}/multi_gpu_v0.csv')
@@ -99,7 +103,6 @@ def bench_dualize():
     reset_file(f'{path}/multi_gpu_weak.csv')
 
     for i in range(20,201,2):
-        os.system(f'{buildpath}benchmarks/baseline {i} {2**(6+OFFSET_BS)} {Ncpu_runs} {Ncpu_warmup} 0 {path}/base.csv')
         if(num_gpus>0):
             proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 0 1 {path}/one_gpu_v0.csv'], env=env);  proc.wait()
             proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 1 1 {path}/one_gpu_v1.csv'], env=env); proc.wait()
@@ -128,9 +131,11 @@ def bench_pipeline():
 
 
 tasks = {'batchsize': bench_batchsize,
+         'baseline':  bench_baseline,
          'dualize':   bench_dualize,
          'generate':  bench_generate,
-         'pipeline':  bench_pipeline};
+         'pipeline':  bench_pipeline,
+         'validate':  validate_kernel};
 
 if(task=="all"):
     for k in tasks: tasks[k]()

@@ -173,7 +173,6 @@ void dualise_sycl_v4(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
                     }    
                 }
             }
-
             sycl::group_barrier(cta);
 //
             auto [u, v] = arc_list[thid];

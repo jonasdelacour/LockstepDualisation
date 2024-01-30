@@ -23,7 +23,10 @@ template <typename T, typename K>
 void fill(IsomerBatch<T,K>& B, int set_div = 1,int offset = 0);
 
 template <typename T, typename K>
-void bucky_fill(IsomerBatch<T,K>& B, int ntasks, int mytask_id);
+void bucky_fill(IsomerBatch<T,K>& B, int mytask_id, int ntasks);
+
+template <typename T, typename K>
+bool bucky_fill(IsomerBatch<T,K>& B, BuckyGen::buckygen_queue& BuckyQ);
 
 
 size_t filesize(std::ifstream &f);

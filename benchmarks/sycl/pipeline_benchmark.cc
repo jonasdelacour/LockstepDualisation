@@ -77,7 +77,7 @@ int main(int argc, char** argv) {
 
     vector<IsomerBatch<float,uint16_t>> batches; for(int i = 0; i < N_d; i++) batches.push_back(IsomerBatch<float,uint16_t>(N, N_graphs/N_d + N_graphs%N_d));
 
-    for(int i = 0; i < N_d; i++) fill(batches[i]);
+    for(int i = 0; i < N_d; i++) bucky_fill(batches[i],i,N_d);
 
 
     vector<double> times_fill(N_runs); //Times in nanoseconds.
@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
             for(int j = 0; j < N_d; j++) {nop_kernel(Qs[j], batches[j], LaunchPolicy::SYNC);}   //Trigger a memcopy.
             for(int j = 0; j < N_d; j++) Qs[j].wait();
             times_memcpy[i-N_warmup] =  duration<double,nano>(steady_clock::now() - start).count();
-            for(int j = 0; j < N_d; j++) {dualise_sycl_v0<6>(Qs[j], batches[j], LaunchPolicy::SYNC);}   //Dualise the batch.
+            for(int j = 0; j < N_d; j++) {dualise_sycl_v1<6>(Qs[j], batches[j], LaunchPolicy::SYNC);}   //Dualise the batch.
             for(int j = 0; j < N_d; j++) Qs[j].wait();
             times_dual[i-N_warmup] =  duration<double,nano>(steady_clock::now() - start).count();
             for(int j = 0; j < N_d; j++) {tutte_layout_sycl(Qs[j], batches[j], LaunchPolicy::SYNC);}   //Compute the Tutte layout.
@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
         } else {
             for(int j = 0; j < N_d; j++) fill(batches[j]);
             for(int j = 0; j < N_d; j++) {nop_kernel(Qs[j], batches[j], LaunchPolicy::SYNC);}   //Dualise the batch.
-            for(int j = 0; j < N_d; j++) {dualise_sycl_v0<6>(Qs[j], batches[j], LaunchPolicy::SYNC);}   //Dualise the batch.
+            for(int j = 0; j < N_d; j++) {dualise_sycl_v1<6>(Qs[j], batches[j], LaunchPolicy::SYNC);}   //Dualise the batch.
             for(int j = 0; j < N_d; j++) {tutte_layout_sycl(Qs[j], batches[j], LaunchPolicy::SYNC);}   //Dualise the batch.
             for(int j = 0; j < N_d; j++) {spherical_projection_sycl(Qs[j], batches[j], LaunchPolicy::SYNC);}   //Dualise the batch.
             for(int j = 0; j < N_d; j++) {forcefield_optimise_sycl(Qs[j], batches[j], N*5, N*5, LaunchPolicy::SYNC);}   //Dualise the batch.
