@@ -41,6 +41,10 @@ int main(int argc, char** argv) {
       fprintf(stderr, "Syntax: %s <cpu|gpu> [N:200] [N_graphs:1000000] [N_runs:10] [N_warmup:1] [version:0] [filename:multi_gpu.csv]\n",argv[0]);
       return -1;
     }
+    if(argc >6 && (stoi(argv[6]) < 0 || stoi(argv[6]) > 4)){
+      fprintf(stderr, "Invalid kernel version %d, must be between 1 and 4.\n", stoi(argv[6]));
+      return -1;
+    }
     string device_type = argv[1];
     bool want_gpus = (device_type == "gpu");
       
@@ -49,7 +53,7 @@ int main(int argc, char** argv) {
     int N_graphs = argc > 3 ? stoi(argv[3]) : 1000000;
     int N_runs = argc > 4 ? stoi(argv[4]) : 10;
     int N_warmup = argc > 5 ? stoi(argv[5]) : 1;
-    int version = argc > 6 ? stoi(argv[6]) : 0;
+    int version = argc > 6 ? stoi(argv[6]) : 1;
     int N_gpus = argc > 7 ? stoi(argv[7]) : 1;
     string filename = argc > 8 ? argv[8] : "multi_"+device_type+".csv";
     
@@ -96,16 +100,16 @@ int main(int argc, char** argv) {
             auto start = steady_clock::now();
             switch (version)
             {
-            case 0:
+            case 1:
                 for(int j = 0; j < N_d; j++) {dualise_sycl_v1<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);}   //Dualise the batch.
                 break;
-            case 1:
+            case 2:
                 for(int j = 0; j < N_d; j++) {dualise_sycl_v2<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);}    //Dualise the batch.
                 break;
-            case 2:
+            case 3:
                 for(int j = 0; j < N_d; j++) {dualise_sycl_v3<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);}    //Dualise the batch.
                 break;
-            case 3:
+            case 4:
                 for(int j = 0; j < N_d; j++) {dualise_sycl_v4<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);}    //Dualise the batch.
                 break;
             default:
@@ -116,16 +120,16 @@ int main(int argc, char** argv) {
         } else {
             switch (version)
             {
-            case 0:
+            case 1:
                 for(int j = 0; j < N_d; j++) dualise_sycl_v1<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);    //Dualise the batch.
                 break;
-            case 1:
+            case 2:
                 for(int j = 0; j < N_d; j++) dualise_sycl_v2<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);    //Dualise the batch.
                 break;
-            case 2:
+            case 3:
                 for(int j = 0; j < N_d; j++) dualise_sycl_v3<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);    //Dualise the batch.
                 break;
-            case 3:
+            case 4:
                 for(int j = 0; j < N_d; j++) dualise_sycl_v4<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);    //Dualise the batch.
                 break;
             default:
