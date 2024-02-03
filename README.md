@@ -15,6 +15,12 @@ Submitted to the 2023 International Conference for High Performance Computing, N
 ## Build
 ### Quickstart
 
+Download the code using the `recursive`-flag, as the code depends on http://github.com/jamesavery/fullerenes/ as a sub-module:
+```
+git clone --recursive git@github.com/jonasdelacour/LockstepDualisation.git
+cd LockstepDualisation
+```
+
 To automatically build, run automatic validation, and run benchmarks, simply type
 ```
 make all
