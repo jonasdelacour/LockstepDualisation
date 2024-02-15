@@ -49,3 +49,7 @@ struct IsomerBatch
     IsomerBatch();
 };
 
+//Copy function
+template <typename T, typename K>
+void copy(IsomerBatch<T,K>& dest, IsomerBatch<T,K>& src);
+
