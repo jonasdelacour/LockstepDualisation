@@ -45,10 +45,8 @@ cwd = os.getcwd()
 path = f'/{cwd}/output/{benchname}/'
 buildpath = f'/{cwd}/build/'
 fname_base = f'{path}base.csv'
-fname_one_gpu_v0 = f'{path}one_gpu_v0.csv'
-fname_one_gpu_v1 = f'{path}one_gpu_v1.csv'
-fname_multi_gpu_v0 = f'{path}multi_gpu_v0.csv'
-fname_multi_gpu_v1 = f'{path}multi_gpu_v1.csv'
+fname_one_gpu_dual = f'{path}one_gpu_v'
+fname_multi_gpu_dual = f'{path}multi_gpu_v'
 fname_multi_gpu_weak = f'{path}multi_gpu_weak.csv'
 fname_single_gpu_bs = f'{path}single_gpu_bs.csv'
 fname_single_gpu_bs = f'{path}single_gpu_bs.csv'
@@ -61,29 +59,27 @@ colors = ["#1f77b4", "#d62728", "#9467bd", "#8c564b", "#e377c2"]
 CD = { "Baseline" : colors[0], "GPU_V0" : colors[1], "GPU_V1" : colors[2], "2 GPU_V0" :  colors[3] ,"2 GPU_V1" : colors[4]}
 
 def plot_dual_bench():
-    print(f"Plotting batch size benchmark from {relpath(fname_multi_gpu_v0,cwd)} to {relpath(path,cwd)}/figures/kernel_benchmark.pdf")
-    df0 = pd.read_csv(fname_multi_gpu_v0)
-    df1 = pd.read_csv(fname_multi_gpu_v1)
-
+    print(f"Plotting batch size benchmark from {relpath(fname_multi_gpu_dual + '1.csv',cwd)} to {relpath(path,cwd)}/figures/kernel_benchmark.pdf")
     fig, ax = plt.subplots(figsize=(15,15), nrows=2, sharex=True, dpi=200)
-    ax[0].plot(df0["N"].to_numpy(), df1["T"].to_numpy(), 'o:', color=CD["2 GPU_V1"], label=KName1)
-    ax[0].plot(df0["N"].to_numpy(), df0["T"].to_numpy(), 'o:', color=CD["2 GPU_V0"], label=KName0)
-    ax[0].fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2), color='k', alpha=0.1, label=r"2$\sigma$")
-    ax[0].fill_between(df0["N"].to_numpy(), (df1["T"].to_numpy() - df1["TSD"].to_numpy()*2), (df1["T"].to_numpy()+df1["TSD"].to_numpy()*2), color='k', alpha=0.1)
+    for i in range(1,5):
+      df0 = pd.read_csv(fname_multi_gpu_dual + str(i) + ".csv")
+      ax[0].plot(df0["N"].to_numpy(), df0["T"].to_numpy(), 'o:', color=CD["2 GPU_V0"], label=KName + " V" + str(i))
+      if i == 1:
+        ax[0].fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2), color='k', alpha=0.1, label=r"2$\sigma$")
+        ax[1].fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2)*1e3 / df0["N"].to_numpy(), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2)*1e3 / df0["N"].to_numpy(), color='k', alpha=0.1, label=r"2$\sigma$") 
+      else:
+        ax[0].fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2), color='k', alpha=0.1)
+        ax[1].plot(df0["N"].to_numpy(), df0["T"].to_numpy()*1e3 / df0["N"].to_numpy(), 'o:', color=CD["2 GPU_V0"], label=KName + " V" + str(i))
+        
+    ylow = ax[1].get_ylim()[0]
+    yhigh = ax[1].get_ylim()[1]
     ylow = ax[0].get_ylim()[0]
     yhigh = ax[0].get_ylim()[1]
-    ax[0].vlines(96, ylow, yhigh, color=CD["2 GPU_V0"], linestyle='--', label=r"Saturation Kernel 0")
-    ax[0].vlines(188, ylow, yhigh, color=CD["2 GPU_V1"], linestyle='--', label=r"Saturation Kernel 1")
     ax[0].set_ylabel(r"Time / Graph [ns]")
     ax[0].set_ymargin(0.0)
     ax[0].legend(loc="upper left")
-
-    ax[1].plot(df0["N"].to_numpy(), df1["T"].to_numpy()*1e3 / df0["N"].to_numpy(), 'o:', color=CD["2 GPU_V1"], label=KName1)
-    ax[1].plot(df0["N"].to_numpy(), df0["T"].to_numpy()*1e3 / df0["N"].to_numpy(), 'o:', color=CD["2 GPU_V0"], label=KName0)
-    ax[1].fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2)*1e3 / df0["N"].to_numpy(), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2)*1e3 / df0["N"].to_numpy(), color='k', alpha=0.1, label=r"2$\sigma$")
-    ax[1].fill_between(df0["N"].to_numpy(), (df1["T"].to_numpy() - df1["TSD"].to_numpy()*2)*1e3 / df0["N"].to_numpy(), (df1["T"].to_numpy()+df1["TSD"].to_numpy()*2)*1e3 / df0["N"].to_numpy(), color='k', alpha=0.1)
-    ylow = ax[1].get_ylim()[0]
-    yhigh = ax[1].get_ylim()[1]
+    ax[0].vlines(96, ylow, yhigh, color=CD["2 GPU_V0"], linestyle='--', label=r"Saturation Kernel 0")
+    ax[0].vlines(188, ylow, yhigh, color=CD["2 GPU_V1"], linestyle='--', label=r"Saturation Kernel 1")
     ax[1].vlines(96, ylow, yhigh, color=CD["2 GPU_V0"], linestyle='--', label=r"Kernel 0 Saturation")
     ax[1].vlines(188, ylow, yhigh, color=CD["2 GPU_V1"], linestyle='--', label=r"Kernel 1 Saturation")
     ax[1].legend(bbox_to_anchor=(0.5, 0.9))
@@ -108,8 +104,7 @@ colors = [adjust_brightness(color, 0.2) for color in colors]
 
 CD = { "Baseline" : 'r', "GPU_V0" : colors[2], "GPU_V1" : colors[3], "2 GPU_V0" :  colors[4] ,"2 GPU_V1" : colors[0], "Dual" : f'#7570b3', "Generate" : f'#d95f02', "Projection" : f'#e7298a', "Tutte" : f'#66a61e', "Opt" : f'#8931EF' }
 
-KName0 = r"SYCL Kernel 0"
-KName1 = r"SYCL Kernel 1"
+KName = r"SYCL Kernel"
 
 ## Batch size
 
@@ -190,8 +185,8 @@ def plot_baseline():
 
 def plot_weak_scaling():
   print(f"Plotting scaling benchmark to {relpath(path,cwd)}/figures/dual_gpu_scaling.pdf")
-  df1 = pd.read_csv(fname_one_gpu_v1)
-  df3 = pd.read_csv(fname_multi_gpu_v1)
+  df1 = pd.read_csv(fname_one_gpu_dual + "1.csv")
+  df3 = pd.read_csv(fname_multi_gpu_dual + "1.csv")
   df2 = pd.read_csv(fname_multi_gpu_weak)
   def std_div(a,b, a_std, b_std):
       return a/b * np.sqrt((a_std/a)**2 + (b_std/b)**2)
@@ -204,7 +199,7 @@ def plot_weak_scaling():
   ax[0].fill_between(df2["N"].to_numpy(), df2["T"].to_numpy() - df2["TSD"].to_numpy()*1, df2["T"].to_numpy() + df2["TSD"].to_numpy()*1, alpha=0.1, color='k')
   ax[0].set_ylabel("Time / Graph [ns]")
   ax[0].legend(loc='upper left')
-
+  print("Shapes: ", df1["N"].shape, df1["T"].shape, df3["T"].shape, df2["T"].shape)
 
   #Plot speedup
   ax[1].plot(df1["N"].to_numpy(), df1["T"].to_numpy()/df3["T"].to_numpy(), 'o:',  color=CD["2 GPU_V1"], label=f"2 GPUs $B_s = 2^{{{21}}}$")
@@ -351,10 +346,10 @@ def plot_lockstep_pipeline(normalize=False, log=False):
 
 
 def plot_speedup():
-  print(f"Plotting single-GPU speedup benchmark from {relpath(fname_base,cwd)} and {relpath(fname_one_gpu_v1,cwd)} to {relpath(path,cwd)}/figures/speedup.pdf") 
+  #print(f"Plotting single-GPU speedup benchmark from {relpath(fname_base,cwd)} and {relpath(fname_one_gpu_dual + "1.csv",cwd)} to {relpath(path,cwd)}/figures/speedup.pdf") 
   fig, ax = plt.subplots(figsize=(20,10), nrows=1, sharex=True)
   df_baseline = pd.read_csv(fname_base)
-  df_dual_lockstep = pd.read_csv(fname_one_gpu_v1)
+  df_dual_lockstep = pd.read_csv(fname_one_gpu_dual + "1.csv")
 
   parallel = df_dual_lockstep["T"].to_numpy()
   parallel_sd = df_dual_lockstep["TSD"].to_numpy()
