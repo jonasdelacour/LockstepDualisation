@@ -377,21 +377,65 @@ void dualise_sycl_v2(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
     if(policy == LaunchPolicy::SYNC) Q.wait();
 }
 
+template <int MaxDegree, typename T>
+struct DualBuffers{
+    std::vector<sycl::device> devices;
+
+    std::vector<sycl::buffer<T,1>> triangle_numbers;
+    std::vector<sycl::buffer<T,1>> arc_list;
+    std::vector<std::array<size_t, 2>> dims; //natoms, capacity
+
+    //SYCL lacks a find for retrieving a unique identifier for a given queue, platform, or device so we have to do this manually
+    int get_device_index(const sycl::device& device){
+        for(int i = 0; i < devices.size(); i++){
+            if(devices[i] == device){
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    DualBuffers(size_t N, size_t capacity, const sycl::device& device){
+        auto Nf = N / 2 + 2;
+        devices = {device};
+        triangle_numbers = std::vector<sycl::buffer<T,1>>(1, sycl::buffer<T,1>(Nf*MaxDegree*capacity));
+        arc_list = std::vector<sycl::buffer<T,1>>(1, sycl::buffer<T,1>(N*capacity*2));
+        dims = std::vector<std::array<size_t, 2>>(1, {N, capacity});
+    }
+
+    void resize(size_t N, size_t Nf, size_t capacity, size_t idx){
+        triangle_numbers[idx]   = sycl::buffer<T,1>(Nf*MaxDegree*capacity);
+        arc_list[idx]      = sycl::buffer<T,1>(N*capacity*2);
+        dims[idx]             = {N, capacity};
+    }
+    
+    void append_buffers(size_t N,size_t Nf, size_t capacity, const sycl::device& device){
+        triangle_numbers.push_back(sycl::buffer<T,1>(Nf*MaxDegree*capacity));
+        arc_list.push_back(sycl::buffer<T,1>(N*capacity*2));
+        dims.push_back({N, capacity});
+        devices.push_back(device);
+    }
+
+    void update(size_t N, size_t capacity, const sycl::device& device){
+        auto idx = get_device_index(device);
+        auto Nf = N / 2 + 2;
+        if(idx == -1){
+            append_buffers(N, Nf, capacity,device);
+            std::cout << "Appended buffers for device " << device.get_info<sycl::info::device::name>() << " ID: " << devices.size() - 1 << "\n";
+        }
+        else if (N != dims[idx][0] || capacity != dims[idx][1]){
+            resize(N, Nf, capacity, idx);
+            std::cout << "Resized buffers for device " << device.get_info<sycl::info::device::name>() << " ID: " << idx << "\n";
+        }
+    }
+};
+
 template <int MaxDegree, typename T, typename K>
 void dualise_sycl_v3(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy policy){
     INT_TYPEDEFS(K);
-    static auto Nf = batch.n_faces;
-    static auto N = batch.n_atoms;
-    static auto capacity = batch.m_capacity;
-    static sycl::buffer<node_t, 1> triangle_numbers(range<1>(batch.n_faces*MaxDegree * batch.m_capacity));
-    static sycl::buffer<node_t, 1> arc_list(range<1>(2* batch.n_atoms * batch.m_capacity));
-    if(batch.n_faces != Nf || batch.n_atoms != N || batch.m_capacity != capacity){
-        Nf = batch.n_faces;
-        N = batch.n_atoms;
-        capacity = batch.m_capacity;
-        triangle_numbers = sycl::buffer<node_t, 1>(range<1>(batch.n_faces*MaxDegree * batch.m_capacity));
-        arc_list = sycl::buffer<node_t, 1>(range<1>(2* batch.n_atoms * batch.m_capacity));
-    }
+    static DualBuffers<MaxDegree, K> buffers(batch.n_atoms, batch.m_capacity, Q.get_device());
+    buffers.update(batch.n_atoms, batch.m_capacity, Q.get_device());
+    auto d_idx = buffers.get_device_index(Q.get_device());
 
     
     if(policy == LaunchPolicy::SYNC) Q.wait();
@@ -409,8 +453,8 @@ void dualise_sycl_v3(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
         //Create device accessors
         accessor     face_degrees_dev       (batch.face_degrees, h, read_only);
         accessor     dual_neighbours_dev    (batch.dual_neighbours, h, read_only);
-        accessor     triangle_numbers_dev   (triangle_numbers, h, write_only);
-        accessor     arc_list_dev           (arc_list, h, write_only);
+        accessor     triangle_numbers_dev   (buffers.triangle_numbers[d_idx], h, write_only);
+        accessor     arc_list_dev           (buffers.arc_list[d_idx], h, write_only);
         /* 
         std::cout << N * capacity << std::endl; */
         #if GRID_STRIDED
@@ -484,8 +528,8 @@ void dualise_sycl_v3(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
         accessor     cubic_neighbours_dev   (batch.cubic_neighbours, h, write_only);
         accessor     face_degrees_dev       (batch.face_degrees, h, read_only);
         accessor     dual_neighbours_dev    (batch.dual_neighbours, h, read_only);
-        accessor     triangle_numbers_dev   (triangle_numbers, h, read_only);
-        accessor     arc_list_dev           (arc_list, h, read_only);
+        accessor     triangle_numbers_dev   (buffers.triangle_numbers[d_idx], h, read_only);
+        accessor     arc_list_dev           (buffers.arc_list[d_idx], h, read_only);
         /* 
         std::cout << N * capacity << std::endl; */
         #if GRID_STRIDED
