@@ -104,10 +104,15 @@ def bench_baseline():
         os.system(f'{buildpath}benchmarks/baseline {i} {2**(8+OFFSET_BS)} {Ncpu_runs} {Ncpu_warmup} 0 {path}/base.csv')
     
 def bench_dualize():
-    reset_file(f'{path}/one_gpu_v0.csv')
     reset_file(f'{path}/one_gpu_v1.csv')
+    reset_file(f'{path}/one_gpu_v2.csv')
+    reset_file(f'{path}/one_gpu_v3.csv')
+    reset_file(f'{path}/one_gpu_v4.csv')
     reset_file(f'{path}/multi_gpu_v0.csv')
     reset_file(f'{path}/multi_gpu_v1.csv')
+    reset_file(f'{path}/multi_gpu_v2.csv')
+    reset_file(f'{path}/multi_gpu_v3.csv')
+    reset_file(f'{path}/multi_gpu_v4.csv')
     reset_file(f'{path}/multi_gpu_weak.csv')
 
     if(num_gpus==0):
@@ -117,11 +122,16 @@ def bench_dualize():
         print("SYCL dualisation kernel not found. Skipping dualisation benchmark. Make sure your SYCL environment is set up correctly. Then run `make all` again.")
         return
     for i in range(20,201,2):
-        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 4 1 {path}/one_gpu_v0.csv'], env=env);  proc.wait()
-        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 1 1 {path}/one_gpu_v1.csv'], env=env); proc.wait()
-        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 4 {num_gpus} {path}/multi_gpu_v0.csv'], env=env); proc.wait()
+        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 1 1 {path}/one_gpu_v1.csv'], env=env);  proc.wait()
+        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 2 1 {path}/one_gpu_v2.csv'], env=env); proc.wait()
+        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 3 1 {path}/one_gpu_v3.csv'], env=env); proc.wait()
+        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 4 1 {path}/one_gpu_v4.csv'], env=env); proc.wait()
+
         proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 1 {num_gpus} {path}/multi_gpu_v1.csv'], env=env); proc.wait()
-        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {num_gpus*2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 1 {num_gpus} {path}/multi_gpu_weak.csv'], env=env); proc.wait()
+        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 2 {num_gpus} {path}/multi_gpu_v2.csv'], env=env); proc.wait()
+        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 3 {num_gpus} {path}/multi_gpu_v3.csv'], env=env); proc.wait()
+        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 4 {num_gpus} {path}/multi_gpu_v4.csv'], env=env); proc.wait()
+        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {num_gpus*2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 4 {num_gpus} {path}/multi_gpu_weak.csv'], env=env); proc.wait()
 
 
 def bench_generate():
