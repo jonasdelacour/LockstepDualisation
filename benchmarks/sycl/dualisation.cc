@@ -90,8 +90,13 @@ int main(int argc, char** argv) {
 
     vector<IsomerBatch<float,uint16_t>> batches; for(int i = 0; i < N_d; i++) batches.push_back(IsomerBatch<float,uint16_t>(N, N_graphs/N_d + N_graphs%N_d));
 
-    
-    for(int i = 0; i < N_d; i++) bucky_fill(batches[i],i,N_d);
+    if (N_graphs > IsomerDB::number_isomers(N)){ //If the isomerspace is too samll for the kernel benchmark fill up with duplicate graphs.
+        auto buckyqueue = BuckyGen::start(N, false, false);
+        bucky_fill(batches[0], buckyqueue);
+        for(int i = 1; i < N_d; i++) copy(batches[i], batches[0]);
+    } else {
+        for(int i = 0; i < N_d; i++) bucky_fill(batches[i], i, N_d);
+    }
 
     vector<double> times(N_runs); //Times in nanoseconds.
     for (size_t i = 0; i < (N_runs + N_warmup); i++)
