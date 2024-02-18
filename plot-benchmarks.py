@@ -52,41 +52,68 @@ fname_single_gpu_bs = f'{path}single_gpu_bs.csv'
 fname_single_gpu_bs = f'{path}single_gpu_bs.csv'
 fname_base_pipeline = f'{path}base_pipeline.csv'
 fname_full_pipeline = f'{path}full_pipeline.csv'
+fname_omp = f'{path}omp_multicore_'
+fname_one_cpu = f'{path}one_cpu_v' 
 
 os.makedirs(f"{path}/figures",exist_ok=True)
 
-colors = ["#1f77b4", "#d62728", "#9467bd", "#8c564b", "#e377c2"]
-CD = { "Baseline" : colors[0], "GPU_V0" : colors[1], "GPU_V1" : colors[2], "2 GPU_V0" :  colors[3] ,"2 GPU_V1" : colors[4]}
+colors = ["#1f77b4", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#FFBA49", "#23001E", "#EF5B5B", "#5A7D7C"]
+CD = { "Baseline" : colors[0], "GPU_V1" : colors[1], "GPU_V2" : colors[2], "2 GPU_V1" :  colors[3] ,"2 GPU_V2" : colors[4]}
 
-def plot_dual_bench():
-    print(f"Plotting batch size benchmark from {relpath(fname_multi_gpu_dual + '1.csv',cwd)} to {relpath(path,cwd)}/figures/kernel_benchmark.pdf")
-    fig, ax = plt.subplots(figsize=(15,15), nrows=2, sharex=True, dpi=200)
-    for i in range(1,5):
-      df0 = pd.read_csv(fname_multi_gpu_dual + str(i) + ".csv")
-      ax[0].plot(df0["N"].to_numpy(), df0["T"].to_numpy(), 'o:', color=CD["2 GPU_V0"], label=KName + " V" + str(i))
-      if i == 1:
-        ax[0].fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2), color='k', alpha=0.1, label=r"2$\sigma$")
-        ax[1].fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2)*1e3 / df0["N"].to_numpy(), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2)*1e3 / df0["N"].to_numpy(), color='k', alpha=0.1, label=r"2$\sigma$") 
-      else:
-        ax[0].fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2), color='k', alpha=0.1)
-        ax[1].plot(df0["N"].to_numpy(), df0["T"].to_numpy()*1e3 / df0["N"].to_numpy(), 'o:', color=CD["2 GPU_V0"], label=KName + " V" + str(i))
-        
-    ylow = ax[1].get_ylim()[0]
-    yhigh = ax[1].get_ylim()[1]
-    ylow = ax[0].get_ylim()[0]
-    yhigh = ax[0].get_ylim()[1]
-    ax[0].set_ylabel(r"Time / Graph [ns]")
-    ax[0].set_ymargin(0.0)
-    ax[0].legend(loc="upper left")
-    ax[0].vlines(96, ylow, yhigh, color=CD["2 GPU_V0"], linestyle='--', label=r"Saturation Kernel 0")
-    ax[0].vlines(188, ylow, yhigh, color=CD["2 GPU_V1"], linestyle='--', label=r"Saturation Kernel 1")
-    ax[1].vlines(96, ylow, yhigh, color=CD["2 GPU_V0"], linestyle='--', label=r"Kernel 0 Saturation")
-    ax[1].vlines(188, ylow, yhigh, color=CD["2 GPU_V1"], linestyle='--', label=r"Kernel 1 Saturation")
-    ax[1].legend(bbox_to_anchor=(0.5, 0.9))
-    ax[1].set_ymargin(0.0)
-    ax[1].set_xlabel(r"Cubic Graph Size [\# Vertices]")
-    ax[1].set_ylabel(r"Time / Vertex [ps]")
-    plt.savefig(f"{path}/figures/kernel_benchmark.pdf", bbox_inches='tight')
+def plot_dual_cpu():
+  if not os.path.exists(fname_omp + "sm.csv") or not os.path.exists(fname_omp + "tp.csv"):
+    print("No OpenMP dualization benchmark found, skipping")
+    return
+  #print(f"Plotting dualization benchmark from {relpath(fname_omp + "sm.csv",cwd)} to {relpath(path,cwd)}/figures/dual_kernel_omp.pdf")
+  fig, ax = plt.subplots(figsize=(15,15), nrows=1, sharex=True, dpi=200)
+  df0 = pd.read_csv(fname_omp + "sm.csv")
+  df1 = pd.read_csv(fname_omp + "tp.csv")
+  #ax.fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2), color='k', alpha=0.1, label=r"2$\sigma$")
+  #ax.plot(df0["N"].to_numpy(), df0["T"].to_numpy(), 'D:', color=CD["OMP_SM"], label="OpenMP Shared-Memory")
+  ax.plot(df1["N"].to_numpy(), df1["T"].to_numpy(), 'D:', color=CD["OMP_TP"], label="OpenMP Task-Parallel")
+  #ax.fill_between(df1["N"].to_numpy(), (df1["T"].to_numpy() - df1["TSD"].to_numpy()*2), (df1["T"].to_numpy()+df1["TSD"].to_numpy()*2), color='k', alpha=0.1, label=r"2$\sigma$")
+  
+  for i in range(1,5):
+    df0 = pd.read_csv(fname_one_cpu + str(i) + ".csv")
+    ax.fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2), color='k', alpha=0.1)
+    ax.plot(df0["N"].to_numpy(), df0["T"].to_numpy(), 'D:', color=CD["GPU_V" + str(i)], label=KName + " V" + str(i))
+
+
+  ax.set_ylabel(r"Time / Graph [ns]")
+  ax.legend(loc='upper left')
+  ax.set_xlabel(r"Cubic Graph Size [\# Vertices]")
+  plt.savefig(f"{path}/figures/dual_kernel_omp.pdf", bbox_inches='tight')
+
+
+def plot_dual_sycl():
+  if not os.path.exists(fname_one_gpu_dual + "1.csv"):
+    print(f"No GPU dualization benchmark found, skipping")
+    
+  print(f"Plotting batch size benchmark from {relpath(fname_multi_gpu_dual + '1.csv',cwd)} to {relpath(path,cwd)}/figures/kernel_benchmark.pdf")
+  fig, ax = plt.subplots(figsize=(15,15), nrows=2, sharex=True, dpi=200)
+  for i in range(1,5):
+    df0 = pd.read_csv(fname_multi_gpu_dual + str(i) + ".csv")
+    if i == 1:
+      ax[0].fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2), color='k', alpha=0.1, label=r"2$\sigma$")
+      ax[1].fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2)*1e3 / df0["N"].to_numpy(), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2)*1e3 / df0["N"].to_numpy(), color='k', alpha=0.1, label=r"2$\sigma$") 
+    else:
+      ax[0].fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2), color='k', alpha=0.1)
+      ax[1].fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2)*1e3 / df0["N"].to_numpy(), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2)*1e3 / df0["N"].to_numpy(), color='k', alpha=0.1) 
+    ax[0].plot(df0["N"].to_numpy(), df0["T"].to_numpy(), 'o:', color=CD["2 GPU_V" + str(i)], label=KName + " V" + str(i))
+    ax[1].plot(df0["N"].to_numpy(), df0["T"].to_numpy()*1e3 / df0["N"].to_numpy(), 'o:', color=CD["2 GPU_V" + str(i)], label=KName + " V" + str(i))
+      
+  ax[0].set_ylabel(r"Time / Graph [ns]")
+  ax[0].set_ymargin(0.0)
+  ax[0].legend(loc="upper left")
+  ax[0].vlines(96, ax[0].get_ylim()[0], ax[0].get_ylim()[1], color=CD["2 GPU_V1"], linestyle='--', label=r"Saturation Kernel 0")
+  ax[0].vlines(188, ax[0].get_ylim()[0], ax[0].get_ylim()[1], color=CD["2 GPU_V2"], linestyle='--', label=r"Saturation Kernel 1")
+  ax[1].vlines(96, ax[1].get_ylim()[0], ax[1].get_ylim()[1], color=CD["2 GPU_V1"], linestyle='--', label=r"Kernel 0 Saturation")
+  ax[1].vlines(188, ax[1].get_ylim()[0], ax[1].get_ylim()[1], color=CD["2 GPU_V2"], linestyle='--', label=r"Kernel 1 Saturation")
+  ax[1].legend(bbox_to_anchor=(0.5, 0.9))
+  ax[1].set_ymargin(0.0)
+  ax[1].set_xlabel(r"Cubic Graph Size [\# Vertices]")
+  ax[1].set_ylabel(r"Time / Vertex [ps]")
+  plt.savefig(f"{path}/figures/kernel_benchmark.pdf", bbox_inches='tight')
 
 def adjust_brightness(color, amount):
     """Adjust the brightness of a color by a given amount (-1 to 1)."""
@@ -100,9 +127,8 @@ def adjust_brightness(color, amount):
     r, g, b = tuple(round(c * 255) for c in colorsys.hls_to_rgb(h, l, s))
     return f"#{r:02x}{g:02x}{b:02x}"
 # Modify the brightness of the colors
-colors = [adjust_brightness(color, 0.2) for color in colors]
-
-CD = { "Baseline" : 'r', "GPU_V0" : colors[2], "GPU_V1" : colors[3], "2 GPU_V0" :  colors[4] ,"2 GPU_V1" : colors[0], "Dual" : f'#7570b3', "Generate" : f'#d95f02', "Projection" : f'#e7298a', "Tutte" : f'#66a61e', "Opt" : f'#8931EF' }
+#colors = [adjust_brightness(color, 0.2) for color in colors]
+CD = { "Baseline" : 'r', "GPU_V1" : colors[2], "GPU_V2" : colors[3], "2 GPU_V1" :  colors[4] ,"2 GPU_V2" : colors[0], "Dual" : f'#7570b3', "Generate" : f'#d95f02', "Projection" : f'#e7298a', "Tutte" : f'#66a61e', "Opt" : f'#8931EF' , "GPU_V3" : colors[5], "GPU_V4" : colors[6], "2 GPU_V3" : colors[7], "2 GPU_V4" : colors[8], "OMP_SM" : f'#963D5A', "OMP_TP" : f'#70A288'}
 
 KName = r"SYCL Kernel"
 
@@ -121,7 +147,7 @@ def plot_batch_size():
   ax.set_xscale('log')
   ax.set_ylabel("Time / Graph [ns]")
   ax.set_xlabel("Batch Size")
-  add_line(ax, df_single_gpu_bs["BS"].to_numpy(), df_single_gpu_bs["T"].to_numpy(), df_single_gpu_bs["TSD"].to_numpy(), "Lockstep Parallel Dualization", CD["GPU_V1"], 'o', ':')
+  add_line(ax, df_single_gpu_bs["BS"].to_numpy(), df_single_gpu_bs["T"].to_numpy(), df_single_gpu_bs["TSD"].to_numpy(), "Lockstep Parallel Dualization", CD["GPU_V2"], 'o', ':')
   ax.legend(loc='best')
 
   #Set xticks to powers of 2
@@ -143,7 +169,7 @@ def plot_batch_size():
   axins.set_ylabel("Time / Graph [ns]")
   axins.set_xlabel("Batch Size")
   #Add line for the last 5 data points
-  add_line(axins, df_single_gpu_bs["BS"].to_numpy()[-7:], df_single_gpu_bs["T"].to_numpy()[-7:], df_single_gpu_bs["TSD"].to_numpy()[-7:], "Lockstep Parallel Dualization", CD["GPU_V1"], 'o', ':')
+  add_line(axins, df_single_gpu_bs["BS"].to_numpy()[-7:], df_single_gpu_bs["T"].to_numpy()[-7:], df_single_gpu_bs["TSD"].to_numpy()[-7:], "Lockstep Parallel Dualization", CD["GPU_V2"], 'o', ':')
   axins.xaxis.set_major_locator(MaxNLocator(integer=True))
   axins.xaxis.set_major_formatter(ticker.ScalarFormatter())
   axins.xaxis.set_minor_formatter(ticker.NullFormatter())
@@ -377,7 +403,8 @@ plot_lockstep_pipeline(normalize=True)
 plot_lockstep_pipeline(normalize=False)
 plot_lockstep_pipeline(normalize=False, log=True)
 plot_speedup()
-plot_dual_bench()
+plot_dual_cpu()
+plot_dual_sycl()
 
 
 
