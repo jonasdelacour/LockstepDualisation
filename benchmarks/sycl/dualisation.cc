@@ -94,6 +94,7 @@ int main(int argc, char** argv) {
         auto buckyqueue = BuckyGen::start(N, false, false);
         bucky_fill(batches[0], buckyqueue);
         for(int i = 1; i < N_d; i++) copy(batches[i], batches[0]);
+        BuckyGen::stop(buckyqueue);
     } else {
         for(int i = 0; i < N_d; i++) bucky_fill(batches[i], i, N_d);
     }
