@@ -8,9 +8,11 @@ Ngpu_runs = 20 #Set to 100 for more accurate results, much smaller standard devi
 Ncpu_runs = 20 #Set to 100 for more accurate results, much smaller standard deviation.
 Ncpu_warmup = 1 #Warmup caches and branch predictor.
 Ngpu_warmup = 1 #No branch prediction on GPU, but SYCL runtime incurs overhead the first time each kernel is run.
+N_warmup = { "cpu": 5, "gpu": 1 }
+N_runs = { "cpu": 20, "gpu": 20 }
 #Change this number if the simulation is taking too long.
-#Setting this number to -1 will reduce the batch sizes by 1 power of 2
-OFFSET_BS = 0
+#Setting this number to -1 will reduce the batch sizes by 1 power of 2 in the kernel dualisation benchmark.
+Bathcsize_Offset = { "cpu": -7, "gpu": -5 } 
 
 
 #----------------- BENCHMARK DEFINITIONS --------------------
@@ -101,37 +103,42 @@ def bench_batchsize():
 def bench_baseline():
     reset_file(f'{path}/base.csv')
     for i in range(20,201,2):
-        os.system(f'{buildpath}benchmarks/baseline {i} {2**(8+OFFSET_BS)} {Ncpu_runs} {Ncpu_warmup} 0 {path}/base.csv')
+        os.system(f'{buildpath}benchmarks/baseline {i} {2**(8)} {Ncpu_runs} {Ncpu_warmup} 0 {path}/base.csv')
     
-def bench_dualize():
-    reset_file(f'{path}/one_gpu_v1.csv')
-    reset_file(f'{path}/one_gpu_v2.csv')
-    reset_file(f'{path}/one_gpu_v3.csv')
-    reset_file(f'{path}/one_gpu_v4.csv')
-    reset_file(f'{path}/multi_gpu_v0.csv')
-    reset_file(f'{path}/multi_gpu_v1.csv')
-    reset_file(f'{path}/multi_gpu_v2.csv')
-    reset_file(f'{path}/multi_gpu_v3.csv')
-    reset_file(f'{path}/multi_gpu_v4.csv')
-    reset_file(f'{path}/multi_gpu_weak.csv')
-
-    if(num_gpus==0):
-        print("No GPUs found. Skipping dualisation benchmark.")
-        return
+def bench_dualize(kernel_versions="all", devices="cpu"):
     if not os.path.exists(f'{buildpath}benchmarks/sycl/dualisation'):
         print("SYCL dualisation kernel not found. Skipping dualisation benchmark. Make sure your SYCL environment is set up correctly. Then run `make all` again.")
         return
-    for i in range(20,201,2):
-        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 1 1 {path}/one_gpu_v1.csv'], env=env);  proc.wait()
-        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 2 1 {path}/one_gpu_v2.csv'], env=env); proc.wait()
-        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 3 1 {path}/one_gpu_v3.csv'], env=env); proc.wait()
-        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 4 1 {path}/one_gpu_v4.csv'], env=env); proc.wait()
+    
+    devices = devices.lower()
+    kernel_range = range(1, 5) if kernel_versions == "all" else [int(kernel_versions)]
+    device_range = ["cpu", "gpu"] if devices == "both" else [devices]
 
-        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 1 {num_gpus} {path}/multi_gpu_v1.csv'], env=env); proc.wait()
-        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 2 {num_gpus} {path}/multi_gpu_v2.csv'], env=env); proc.wait()
-        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 3 {num_gpus} {path}/multi_gpu_v3.csv'], env=env); proc.wait()
-        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 4 {num_gpus} {path}/multi_gpu_v4.csv'], env=env); proc.wait()
-        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {num_gpus*2**(20+OFFSET_BS)} {Ngpu_runs} {Ngpu_warmup} 4 {num_gpus} {path}/multi_gpu_weak.csv'], env=env); proc.wait()
+    if "gpu" in device_range and num_gpus==0:
+        print("No GPUs found. Skipping dualisation benchmark.")
+        return
+    if "gpu" in device_range: 
+        reset_file(f'{path}/multi_gpu_weak.csv')
+
+    for j in kernel_range:
+        if "gpu" in device_range: 
+            reset_file(f'{path}/multi_gpu_v{j}.csv')
+        for device in device_range:
+            reset_file(f'{path}/one_{device}_v{j}.csv')
+    for i in range(20,201,2):
+        #Currently just running weak scaling for multi-GPU using the fastest kernel (v1)
+        if "cpu" in device_range:
+            #OpenMP Benchmark (2 Different Versions: Shared Memory Parallelism and Task Parallelism)
+            proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/omp_multicore {i} {2**(20+Bathcsize_Offset["cpu"])} {Ncpu_runs} {Ncpu_warmup} 0 {path}/omp_multicore_sm.csv'], env=env); proc.wait()
+            proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/omp_multicore {i} {2**(20+Bathcsize_Offset["cpu"])} {Ncpu_runs} {Ncpu_warmup} 1 {path}/omp_multicore_tp.csv'], env=env); proc.wait()
+        if "gpu" in device_range:
+            proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {num_gpus*2**(20+Bathcsize_Offset["gpu"])} {Ngpu_runs} {Ngpu_warmup} 1 {num_gpus} {path}/multi_gpu_weak.csv'], env=env); proc.wait()
+            proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+Bathcsize_Offset["gpu"])} {Ngpu_runs} {Ngpu_warmup} {j} {num_gpus} {path}/multi_gpu_v{j}.csv'], env=env); proc.wait()
+        for j in kernel_range:
+            for device in device_range:
+                proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation {device} {i} {2**(20+Bathcsize_Offset[device])} {Ngpu_runs} {Ngpu_warmup} {j} 1 {path}/one_{device}_v{j}.csv'], env=env);  proc.wait()
+            
+
 
 
 def bench_generate():
