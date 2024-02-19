@@ -61,38 +61,45 @@ colors = ["#1f77b4", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#FFBA49", "#23
 CD = { "Baseline" : colors[0], "GPU_V1" : colors[1], "GPU_V2" : colors[2], "2 GPU_V1" :  colors[3] ,"2 GPU_V2" : colors[4]}
 
 def plot_dual_cpu():
-  if not os.path.exists(fname_omp + "sm.csv") or not os.path.exists(fname_omp + "tp.csv"):
-    print("No OpenMP dualization benchmark found, skipping")
+  try:
+    df0 = pd.read_csv(fname_omp + "sm.csv")
+    df1 = pd.read_csv(fname_omp + "tp.csv")
+  except:
+    print(f"Could not read {fname_omp + 'sm.csv'}, skipping")
     return
+
   #print(f"Plotting dualization benchmark from {relpath(fname_omp + "sm.csv",cwd)} to {relpath(path,cwd)}/figures/dual_kernel_omp.pdf")
   fig, ax = plt.subplots(figsize=(15,15), nrows=1, sharex=True, dpi=200)
-  df0 = pd.read_csv(fname_omp + "sm.csv")
-  df1 = pd.read_csv(fname_omp + "tp.csv")
+  Nf = df0["N"].to_numpy()/2 + 2
   #ax.fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2), color='k', alpha=0.1, label=r"2$\sigma$")
   #ax.plot(df0["N"].to_numpy(), df0["T"].to_numpy(), 'D:', color=CD["OMP_SM"], label="OpenMP Shared-Memory")
-  ax.plot(df1["N"].to_numpy(), df1["T"].to_numpy(), 'D:', color=CD["OMP_TP"], label="OpenMP Task-Parallel")
-  #ax.fill_between(df1["N"].to_numpy(), (df1["T"].to_numpy() - df1["TSD"].to_numpy()*2), (df1["T"].to_numpy()+df1["TSD"].to_numpy()*2), color='k', alpha=0.1, label=r"2$\sigma$")
+  ax.plot(Nf, df1["T"].to_numpy(), 'D:', color=CD["OMP_TP"], label="OpenMP Task-Parallel")
+  ax.fill_between(Nf, (df1["T"].to_numpy() - df1["TSD"].to_numpy()*2), (df1["T"].to_numpy()+df1["TSD"].to_numpy()*2), color='k', alpha=0.1, label=r"2$\sigma$")
   
   for i in range(1,5):
     df0 = pd.read_csv(fname_one_cpu + str(i) + ".csv")
-    ax.fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2), color='k', alpha=0.1)
-    ax.plot(df0["N"].to_numpy(), df0["T"].to_numpy(), 'D:', color=CD["GPU_V" + str(i)], label=KName + " V" + str(i))
+    ax.fill_between(Nf, (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2), color='k', alpha=0.1)
+    ax.plot(Nf, df0["T"].to_numpy(), 'D:', color=CD["GPU_V" + str(i)], label=KName + " V" + str(i))
 
 
   ax.set_ylabel(r"Time / Graph [ns]")
   ax.legend(loc='upper left')
-  ax.set_xlabel(r"Cubic Graph Size [\# Vertices]")
+  ax.set_xlabel(r"Number of Triangles [\# Vertices]")
+  ax.set_ylim(0,)
   plt.savefig(f"{path}/figures/dual_kernel_omp.pdf", bbox_inches='tight')
 
 
 def plot_dual_sycl():
-  if not os.path.exists(fname_one_gpu_dual + "1.csv"):
-    print(f"No GPU dualization benchmark found, skipping")
+  
     
   print(f"Plotting batch size benchmark from {relpath(fname_multi_gpu_dual + '1.csv',cwd)} to {relpath(path,cwd)}/figures/kernel_benchmark.pdf")
   fig, ax = plt.subplots(figsize=(15,15), nrows=2, sharex=True, dpi=200)
   for i in range(1,5):
-    df0 = pd.read_csv(fname_multi_gpu_dual + str(i) + ".csv")
+    try:
+      df0 = pd.read_csv(fname_multi_gpu_dual + str(i) + ".csv")
+    except:
+      print(f"GPU benchmark for Kernel {i} not found, skipping")
+      continue
     if i == 1:
       ax[0].fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2), color='k', alpha=0.1, label=r"2$\sigma$")
       ax[1].fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2)*1e3 / df0["N"].to_numpy(), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2)*1e3 / df0["N"].to_numpy(), color='k', alpha=0.1, label=r"2$\sigma$") 
@@ -136,7 +143,11 @@ KName = r"SYCL Kernel"
 
 def plot_batch_size():
   print(f"Plotting batch size benchmark from {relpath(fname_single_gpu_bs,cwd)} to {relpath(path,cwd)}/figures/batch_size_benchmark.pdf")
-  df_single_gpu_bs = pd.read_csv(fname_single_gpu_bs)
+  try:
+    df_single_gpu_bs = pd.read_csv(fname_single_gpu_bs)
+  except:
+    print(f"Could not read {fname_single_gpu_bs}, skipping")
+    return
   Nrows = df_single_gpu_bs.shape[0]
   fig,ax = plt.subplots(figsize=(15,10))
   def add_line(ax, BS, T, SD, label, color, marker, linestyle):
