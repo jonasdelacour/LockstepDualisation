@@ -120,7 +120,7 @@ def bench_dualize(kernel_versions="all", devices="cpu"):
     if "gpu" in device_range: 
         reset_file(f'{path}/multi_gpu_weak.csv')
     if "cpu" in device_range:
-        reset_file(f'{path}/omp_multicore_sm.csv')
+        #reset_file(f'{path}/omp_multicore_sm.csv')
         reset_file(f'{path}/omp_multicore_tp.csv')
 
     for j in kernel_range:
@@ -132,7 +132,7 @@ def bench_dualize(kernel_versions="all", devices="cpu"):
         #Currently just running weak scaling for multi-GPU using the fastest kernel (v1)
         if "cpu" in device_range:
             #OpenMP Benchmark (2 Different Versions: Shared Memory Parallelism and Task Parallelism)
-            proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/omp_multicore {i} {2**(20+Bathcsize_Offset["cpu"])} {Ncpu_runs} {Ncpu_warmup} 0 {path}/omp_multicore_sm.csv'], env=env); proc.wait()
+            #proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/omp_multicore {i} {2**(20+Bathcsize_Offset["cpu"])} {Ncpu_runs} {Ncpu_warmup} 0 {path}/omp_multicore_sm.csv'], env=env); proc.wait()
             proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/omp_multicore {i} {2**(20+Bathcsize_Offset["cpu"])} {Ncpu_runs} {Ncpu_warmup} 1 {path}/omp_multicore_tp.csv'], env=env); proc.wait()
         if "gpu" in device_range:
             proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {num_gpus*2**(20+Bathcsize_Offset["gpu"])} {Ngpu_runs} {Ngpu_warmup} 1 {num_gpus} {path}/multi_gpu_weak.csv'], env=env); proc.wait()
@@ -170,14 +170,20 @@ def bench_pipeline():
 
 
 
+def bench_dualize_cpu():
+    bench_dualize("all", "cpu")
+
+def bench_dualize_gpu():
+    bench_dualize("all", "gpu")
 
 
-tasks = {'batchsize': bench_batchsize,
-         'baseline':  bench_baseline,
-         'dualize':   bench_dualize,
-         'generate':  bench_generate,
-         'pipeline':  bench_pipeline,
-         'validate':  validate_kernel};
+tasks = {'batchsize':   bench_batchsize,
+         'baseline':    bench_baseline,
+         'dualize_cpu': bench_dualize_cpu,
+         'dualize_gpu': bench_dualize_gpu,
+         'generate':    bench_generate,
+         'pipeline':    bench_pipeline,
+         'validate':    validate_kernel};
 
 if(task=="all"):
     for k in tasks: tasks[k]()
