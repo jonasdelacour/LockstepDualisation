@@ -92,6 +92,27 @@ struct DeviceDualGraph{
         return min_edge;
     }
 };
+
+int roundUp(int numToRound, int multiple) 
+{
+    assert(multiple);
+    return ((numToRound + multiple - 1) / multiple) * multiple;
+}
+
+int get_best_work_group_size(int numToRound, const std::string& kernel_name, const sycl::queue& Q){
+    if(Q.get_device().is_gpu()) return roundUp(numToRound, Q.get_device().get_info<info::device::sub_group_sizes>()[0]);
+    kernel_bundle kb = sycl::get_kernel_bundle<sycl::bundle_state::executable>(Q.get_context());
+    std::vector<kernel_id> k_ids = kb.get_kernel_ids();
+    auto preferred_wg_size = 0; 
+    for(auto k_id : k_ids){
+        auto kernel = kb.get_kernel(k_id);
+        if (kernel.get_info<info::kernel::function_name>().find(kernel_name) != std::string::npos){
+            preferred_wg_size = kernel.get_info<info::kernel_device_specific::preferred_work_group_size_multiple>(Q.get_device());
+        }
+    }
+    return roundUp(numToRound, preferred_wg_size);
+}
+
 template <int MaxDegree, typename T, typename K>
 void dualise_sycl_v4(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy policy){
     INT_TYPEDEFS(K);
@@ -190,11 +211,6 @@ void dualise_sycl_v4(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
     if(policy == LaunchPolicy::SYNC) Q.wait();
 }
 
-int roundUp(int numToRound, int multiple) 
-{
-    assert(multiple);
-    return ((numToRound + multiple - 1) / multiple) * multiple;
-}
 
 template <int MaxDegree, typename T, typename K>
 void dualise_sycl_v1(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy policy){
