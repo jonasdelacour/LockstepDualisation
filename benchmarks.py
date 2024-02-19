@@ -119,6 +119,9 @@ def bench_dualize(kernel_versions="all", devices="cpu"):
         return
     if "gpu" in device_range: 
         reset_file(f'{path}/multi_gpu_weak.csv')
+    if "cpu" in device_range:
+        reset_file(f'{path}/omp_multicore_sm.csv')
+        reset_file(f'{path}/omp_multicore_tp.csv')
 
     for j in kernel_range:
         if "gpu" in device_range: 
