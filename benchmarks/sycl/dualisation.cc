@@ -85,12 +85,15 @@ int main(int argc, char** argv) {
 
     int Nf = N/2 + 2;
     N_d = N_gpus;
+    for (int i = N_d; i < Qs.size(); i++){
+        Qs.pop_back(); //Remove any extra devices.
+    }
 
     //vector<IsomerBatch<float,uint16_t>> batches= {IsomerBatch<float,uint16_t>(N, N_graphs/N_d + N_graphs%N_d), IsomerBatch<float,uint16_t>(N, N_graphs/N_d + N_graphs%N_d)};
 
     vector<IsomerBatch<float,uint16_t>> batches; for(int i = 0; i < N_d; i++) batches.push_back(IsomerBatch<float,uint16_t>(N, N_graphs/N_d + N_graphs%N_d));
 
-    if (N_graphs > IsomerDB::number_isomers(N)){ //If the isomerspace is too samll for the kernel benchmark fill up with duplicate graphs.
+    /* if (N_graphs > IsomerDB::number_isomers(N)){ //If the isomerspace is too samll for the kernel benchmark fill up with duplicate graphs.
         auto buckyqueue = BuckyGen::start(N, false, false);
         bucky_fill(batches[0], buckyqueue);
         for(int i = 1; i < N_d; i++) copy(batches[i], batches[0]);
@@ -98,7 +101,9 @@ int main(int argc, char** argv) {
     } else {
         for(int i = 0; i < N_d; i++) bucky_fill(batches[i], i, N_d);
     }
+ */
 
+    fill_fast(batches);
     vector<double> times(N_runs); //Times in nanoseconds.
     for (size_t i = 0; i < (N_runs + N_warmup); i++)
     {
