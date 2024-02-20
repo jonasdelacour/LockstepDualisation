@@ -12,7 +12,7 @@ N_warmup = { "cpu": 5, "gpu": 1 }
 N_runs = { "cpu": 20, "gpu": 20 }
 #Change this number if the simulation is taking too long.
 #Setting this number to -1 will reduce the batch sizes by 1 power of 2 in the kernel dualisation benchmark.
-Bathcsize_Offset = { "cpu": -7, "gpu": -5 } 
+Bathcsize_Offset = { "cpu": -5, "gpu": 0 } 
 
 
 #----------------- BENCHMARK DEFINITIONS --------------------
@@ -28,7 +28,7 @@ pathlib.Path(f"{path}/figures").mkdir(parents=True, exist_ok=True)
 
 if(len(sys.argv)<2):
     print(f"Syntax: {sys.argv[0]} <task>\n"+
-          "Where task is one of: 'all', 'batchsize', 'baseline', 'dualize', 'generate', 'pipeline', or 'validate'.\n");
+          "Where task is one of: 'all', 'batchsize', 'baseline', 'dualize_gpu', 'dualize_cpu', 'generate', 'pipeline', or 'validate'.\n");
     exit(-1)
     
 task = sys.argv[1]
@@ -136,8 +136,9 @@ def bench_dualize(kernel_versions="all", devices="cpu"):
             proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/omp_multicore {i} {2**(20+Bathcsize_Offset["cpu"])} {Ncpu_runs} {Ncpu_warmup} 1 {path}/omp_multicore_tp.csv'], env=env); proc.wait()
         if "gpu" in device_range:
             proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {num_gpus*2**(20+Bathcsize_Offset["gpu"])} {Ngpu_runs} {Ngpu_warmup} 1 {num_gpus} {path}/multi_gpu_weak.csv'], env=env); proc.wait()
-            proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+Bathcsize_Offset["gpu"])} {Ngpu_runs} {Ngpu_warmup} {j} {num_gpus} {path}/multi_gpu_v{j}.csv'], env=env); proc.wait()
         for j in kernel_range:
+            if "gpu" in device_range:
+                proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+Bathcsize_Offset["gpu"])} {Ngpu_runs} {Ngpu_warmup} {j} {num_gpus} {path}/multi_gpu_v{j}.csv'], env=env); proc.wait()
             for device in device_range:
                 proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation {device} {i} {2**(20+Bathcsize_Offset[device])} {Ngpu_runs} {Ngpu_warmup} {j} 1 {path}/one_{device}_v{j}.csv'], env=env);  proc.wait()
             
