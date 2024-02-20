@@ -20,6 +20,9 @@ void remove_outliers(std::vector<T>& data, int n_sigma = 2);
 #include "isomer_batch.h"
 
 template <typename T, typename K>
+void fill_fast(std::vector<IsomerBatch<T,K>>& B);
+
+template <typename T, typename K>
 void fill(IsomerBatch<T,K>& B, int set_div = 1,int offset = 0);
 
 template <typename T, typename K>
