@@ -70,21 +70,21 @@ def plot_dual_cpu():
 
   #print(f"Plotting dualization benchmark from {relpath(fname_omp + "sm.csv",cwd)} to {relpath(path,cwd)}/figures/dual_kernel_omp.pdf")
   fig, ax = plt.subplots(figsize=(15,15), nrows=1, sharex=True, dpi=200)
-  Nf = df0["N"].to_numpy()/2 + 2
+  N = df0["N"].to_numpy()
   #ax.fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2), color='k', alpha=0.1, label=r"2$\sigma$")
   #ax.plot(df0["N"].to_numpy(), df0["T"].to_numpy(), 'D:', color=CD["OMP_SM"], label="OpenMP Shared-Memory")
-  ax.plot(Nf, df1["T"].to_numpy(), 'D:', color=CD["OMP_TP"], label="OpenMP Task-Parallel")
-  ax.fill_between(Nf, (df1["T"].to_numpy() - df1["TSD"].to_numpy()*2), (df1["T"].to_numpy()+df1["TSD"].to_numpy()*2), color='k', alpha=0.1, label=r"2$\sigma$")
+  ax.plot(N, df1["T"].to_numpy(), 'D:', color=CD["OMP_TP"], label="OpenMP Task-Parallel")
+  ax.fill_between(N, (df1["T"].to_numpy() - df1["TSD"].to_numpy()*2), (df1["T"].to_numpy()+df1["TSD"].to_numpy()*2), color='k', alpha=0.1, label=r"2$\sigma$")
   
   for i in range(1,5):
     df0 = pd.read_csv(fname_one_cpu + str(i) + ".csv")
-    ax.fill_between(Nf, (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2), color='k', alpha=0.1)
-    ax.plot(Nf, df0["T"].to_numpy(), 'D:', color=CD["GPU_V" + str(i)], label=KName + " V" + str(i))
+    ax.fill_between(N, (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2), color='k', alpha=0.1)
+    ax.plot(N, df0["T"].to_numpy(), 'D:', color=CD["GPU_V" + str(i)], label=KName + " V" + str(i))
 
 
   ax.set_ylabel(r"Time / Graph [ns]")
   ax.legend(loc='upper left')
-  ax.set_xlabel(r"Number of Triangles [\# Vertices]")
+  ax.set_xlabel(r"Cubic Graph Size [\# Vertices]")
   ax.set_ylim(0,)
   plt.savefig(f"{path}/figures/dual_kernel_omp.pdf", bbox_inches='tight')
 
@@ -111,13 +111,13 @@ def plot_dual_sycl():
       
   ax[0].set_ylabel(r"Time / Graph [ns]")
   ax[0].set_ymargin(0.0)
+  ax[1].set_ymargin(0.0)
   ax[0].legend(loc="upper left")
   ax[0].vlines(96, ax[0].get_ylim()[0], ax[0].get_ylim()[1], color=CD["2 GPU_V1"], linestyle='--', label=r"Saturation Kernel 0")
   ax[0].vlines(188, ax[0].get_ylim()[0], ax[0].get_ylim()[1], color=CD["2 GPU_V2"], linestyle='--', label=r"Saturation Kernel 1")
   ax[1].vlines(96, ax[1].get_ylim()[0], ax[1].get_ylim()[1], color=CD["2 GPU_V1"], linestyle='--', label=r"Kernel 0 Saturation")
   ax[1].vlines(188, ax[1].get_ylim()[0], ax[1].get_ylim()[1], color=CD["2 GPU_V2"], linestyle='--', label=r"Kernel 1 Saturation")
   ax[1].legend(bbox_to_anchor=(0.5, 0.9))
-  ax[1].set_ymargin(0.0)
   ax[1].set_xlabel(r"Cubic Graph Size [\# Vertices]")
   ax[1].set_ylabel(r"Time / Vertex [ps]")
   plt.savefig(f"{path}/figures/kernel_benchmark.pdf", bbox_inches='tight')
