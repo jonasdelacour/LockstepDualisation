@@ -30,6 +30,8 @@ rc["figure.autolayout"] = True
 rc["savefig.dpi"] = 300
 rc["text.usetex"] = True
 rc["font.family"] = "Times New Roman"
+rc["lines.markeredgecolor"] = "k"
+rc["lines.markeredgewidth"] = 0.5
 rc.update({
   "text.usetex": True,
   "font.family": "Times New Roman"
@@ -54,12 +56,14 @@ fname_base_pipeline = f'{path}base_pipeline.csv'
 fname_full_pipeline = f'{path}full_pipeline.csv'
 fname_omp = f'{path}omp_multicore_'
 fname_one_cpu = f'{path}one_cpu_v' 
+save_format = "pdf"
 
 os.makedirs(f"{path}/figures",exist_ok=True)
 
 colors = ["#1f77b4", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#FFBA49", "#23001E", "#EF5B5B", "#5A7D7C"]
 CD = { "Baseline" : colors[0], "GPU_V1" : colors[1], "GPU_V2" : colors[2], "2 GPU_V1" :  colors[3] ,"2 GPU_V2" : colors[4]}
-
+MarkerList = ['s', 'P', 'v', 'p']
+MarkerSizes = [10, 10, 10, 10]
 def plot_dual_cpu():
   try:
     df0 = pd.read_csv(fname_omp + "sm.csv")
@@ -69,29 +73,34 @@ def plot_dual_cpu():
     return
 
   #print(f"Plotting dualization benchmark from {relpath(fname_omp + "sm.csv",cwd)} to {relpath(path,cwd)}/figures/dual_kernel_omp.pdf")
-  fig, ax = plt.subplots(figsize=(15,15), nrows=1, sharex=True, dpi=200)
+  fig, ax = plt.subplots(figsize=(15,15), nrows=2, sharex=True, dpi=200)
   N = df0["N"].to_numpy()
   #ax.fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2), color='k', alpha=0.1, label=r"2$\sigma$")
   #ax.plot(df0["N"].to_numpy(), df0["T"].to_numpy(), 'D:', color=CD["OMP_SM"], label="OpenMP Shared-Memory")
-  ax.plot(N, df1["T"].to_numpy(), 'D:', color=CD["OMP_TP"], label="OpenMP Task-Parallel")
-  ax.fill_between(N, (df1["T"].to_numpy() - df1["TSD"].to_numpy()*2), (df1["T"].to_numpy()+df1["TSD"].to_numpy()*2), color='k', alpha=0.1, label=r"2$\sigma$")
+  ax[0].plot(N, df1["T"].to_numpy(), 'D:', color=CD["OMP_TP"], label="OpenMP Task-Parallel")
+  #ax[0].fill_between(N, (df1["T"].to_numpy() - df1["TSD"].to_numpy()*2), (df1["T"].to_numpy()+df1["TSD"].to_numpy()*2), color='k', alpha=0.1, label=r"2$\sigma$")
+  ax[1].plot(N, df1["T"].to_numpy() / N, 'D:', color=CD["OMP_TP"], label="OpenMP Task-Parallel")
+  #ax[1].fill_between(N, (df1["T"].to_numpy() - df1["TSD"].to_numpy()*2) / N, (df1["T"].to_numpy()+df1["TSD"].to_numpy()*2) / N, color='k', alpha=0.1, label=r"2$\sigma$")
   
   for i in range(1,5):
     df0 = pd.read_csv(fname_one_cpu + str(i) + ".csv")
-    ax.fill_between(N, (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2), color='k', alpha=0.1)
-    ax.plot(N, df0["T"].to_numpy(), 'D:', color=CD["GPU_V" + str(i)], label=KName + " V" + str(i))
+    #ax[0].fill_between(N, (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2), color='k', alpha=0.1)
+    ax[0].plot(N, df0["T"].to_numpy(), f'{MarkerList[i-1]}:', color=CD["GPU_V" + str(i)], label=KName + " V" + str(i))
+    ax[1].plot(N, df0["T"].to_numpy() / N, f'{MarkerList[i-1]}:', color=CD["GPU_V" + str(i)], label=KName + " V" + str(i))
+    #ax[1].fill_between(N, (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2) / N, (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2) / N, color='k', alpha=0.1)
 
 
-  ax.set_ylabel(r"Time / Graph [ns]")
-  ax.legend(loc='upper left')
-  ax.set_xlabel(r"Cubic Graph Size [\# Vertices]")
-  ax.set_ylim(0,)
-  plt.savefig(f"{path}/figures/dual_kernel_omp.pdf", bbox_inches='tight')
+
+  ax[0].set_ylabel(r"Time / Graph [ns]")
+  ax[1].set_ylabel(r"Time / Vertex [ns]")
+  ax[0].legend(loc='upper left')
+  ax[1].legend(loc = 'upper left', ncol=2)
+  ax[1].set_xlabel(r"Cubic Graph Size [\# Vertices]")
+  ax[0].set_ylim(0,)
+  plt.savefig(f"{path}/figures/dual_kernel_omp.{save_format}", bbox_inches='tight')
 
 
 def plot_dual_sycl():
-  
-    
   print(f"Plotting batch size benchmark from {relpath(fname_multi_gpu_dual + '1.csv',cwd)} to {relpath(path,cwd)}/figures/kernel_benchmark.pdf")
   fig, ax = plt.subplots(figsize=(15,15), nrows=2, sharex=True, dpi=200)
   for i in range(1,5):
@@ -120,7 +129,7 @@ def plot_dual_sycl():
   ax[1].legend(bbox_to_anchor=(0.5, 0.9))
   ax[1].set_xlabel(r"Cubic Graph Size [\# Vertices]")
   ax[1].set_ylabel(r"Time / Vertex [ps]")
-  plt.savefig(f"{path}/figures/kernel_benchmark.pdf", bbox_inches='tight')
+  plt.savefig(f"{path}/figures/kernel_benchmark.{save_format}", bbox_inches='tight')
 
 def adjust_brightness(color, amount):
     """Adjust the brightness of a color by a given amount (-1 to 1)."""
@@ -142,7 +151,7 @@ KName = r"SYCL Kernel"
 ## Batch size
 
 def plot_batch_size():
-  print(f"Plotting batch size benchmark from {relpath(fname_single_gpu_bs,cwd)} to {relpath(path,cwd)}/figures/batch_size_benchmark.pdf")
+  print(f"Plotting batch size benchmark from {relpath(fname_single_gpu_bs,cwd)} to {relpath(path,cwd)}/figures/batch_size_benchmark.{save_format}")
   try:
     df_single_gpu_bs = pd.read_csv(fname_single_gpu_bs)
   except:
@@ -197,12 +206,12 @@ def plot_batch_size():
   #Mark the zoomed area
   mark_inset(ax, axins, loc1=3, loc2=1, fc="none", ec="0.5")
 
-  plt.savefig(f'{path}figures/batch_size_benchmark.pdf', bbox_inches='tight')
+  plt.savefig(f'{path}figures/batch_size_benchmark.{save_format}', bbox_inches='tight')
 
 
 ## Baseline Sequential Dualization
 def plot_baseline():
-  print(f"Plotting baseline benchmark from {relpath(fname_base,cwd)} to {relpath(path,cwd)}/figures/baseline.pdf")    
+  print(f"Plotting baseline benchmark from {relpath(fname_base,cwd)} to {relpath(path,cwd)}/figures/baseline.{save_format}")    
   df_base = pd.read_csv(fname_base)
 
   fig, ax = plt.subplots(figsize=(15,15), nrows=2, sharex=True, dpi=200)
@@ -216,12 +225,12 @@ def plot_baseline():
   ax[1].set_ylabel(r"Time / Vertex [ns]")
   ax[1].set_xlabel(r"Cubic Graph Size [\# Vertices]")
   ax[1].legend()
-  plt.savefig(path + "figures/baseline.pdf", bbox_inches='tight')
+  plt.savefig(path + f"figures/baseline.{save_format}", bbox_inches='tight')
 
 ##
 
 def plot_weak_scaling():
-  print(f"Plotting scaling benchmark to {relpath(path,cwd)}/figures/dual_gpu_scaling.pdf")
+  print(f"Plotting scaling benchmark to {relpath(path,cwd)}/figures/dual_gpu_scaling.{save_format}")
   df1 = pd.read_csv(fname_one_gpu_dual + "1.csv")
   df3 = pd.read_csv(fname_multi_gpu_dual + "1.csv")
   df2 = pd.read_csv(fname_multi_gpu_weak)
@@ -230,7 +239,7 @@ def plot_weak_scaling():
   fig, ax     = plt.subplots(figsize=(15, 15), nrows=2, sharex=True)
   ax[0].plot(df1["N"].to_numpy(), df1["T"].to_numpy(), 'o:',  color=CD["GPU_V1"], label=f"1 GPU, $B_s = 2^{{{20}}}$")
   ax[0].plot(df3["N"].to_numpy(), df3["T"].to_numpy(), 'o:',  color=CD["2 GPU_V1"], label=f"2 GPUs $B_s = 2^{{{21}}}$")
-  ax[0].plot(df2["N"].to_numpy(), df2["T"].to_numpy(), 'x--',  color=CD["2 GPU_V1"], label=f"2 GPUs $B_s = 2^{{{20}}}$")
+  ax[0].plot(df2["N"].to_numpy(), df2["T"].to_numpy(), 'X--',  color=CD["2 GPU_V1"], label=f"2 GPUs $B_s = 2^{{{20}}}$")
   ax[0].fill_between(df1["N"].to_numpy(), df1["T"].to_numpy() - df1["TSD"].to_numpy()*1, df1["T"].to_numpy() + df1["TSD"].to_numpy()*1, alpha=0.1, color='k', label=r"1$\sigma$")
   ax[0].fill_between(df3["N"].to_numpy(), df3["T"].to_numpy() - df3["TSD"].to_numpy()*1, df3["T"].to_numpy() + df3["TSD"].to_numpy()*1, alpha=0.1, color='k')
   ax[0].fill_between(df2["N"].to_numpy(), df2["T"].to_numpy() - df2["TSD"].to_numpy()*1, df2["T"].to_numpy() + df2["TSD"].to_numpy()*1, alpha=0.1, color='k')
@@ -240,7 +249,7 @@ def plot_weak_scaling():
 
   #Plot speedup
   ax[1].plot(df1["N"].to_numpy(), df1["T"].to_numpy()/df3["T"].to_numpy(), 'o:',  color=CD["2 GPU_V1"], label=f"2 GPUs $B_s = 2^{{{21}}}$")
-  ax[1].plot(df1["N"].to_numpy(), df1["T"].to_numpy()/df2["T"].to_numpy(), 'x--',  color=CD["2 GPU_V1"], label=f"2 GPUs $B_s = 2^{{{20}}}$")
+  ax[1].plot(df1["N"].to_numpy(), df1["T"].to_numpy()/df2["T"].to_numpy(), 'X--',  color=CD["2 GPU_V1"], label=f"2 GPUs $B_s = 2^{{{20}}}$")
   std_1 = std_div(df1["T"].to_numpy(), df3["T"].to_numpy(), df1["TSD"].to_numpy(), df3["TSD"].to_numpy())
   std_2 = std_div(df1["T"].to_numpy(), df2["T"].to_numpy(), df1["TSD"].to_numpy(), df2["TSD"].to_numpy())
   ax[1].fill_between(df1["N"].to_numpy(), df1["T"].to_numpy()/df3["T"].to_numpy() - std_1, df1["T"].to_numpy()/df3["T"].to_numpy() + std_1, alpha=0.1, color='k', label=r"1$\sigma$")
@@ -250,10 +259,10 @@ def plot_weak_scaling():
   ax[1].set_xlabel(r"Cubic Graph Size [\# Vertices]")
   ax[1].set_ylim(0.95,2*1.05)
   ax[1].legend(loc='lower right', ncol=2)
-  plt.savefig(path + "figures/dual_gpu_scaling.pdf", bbox_inches='tight')
+  plt.savefig(path + f"figures/dual_gpu_scaling.{save_format}", bbox_inches='tight')
 
 def plot_pipeline(normalize=False):
-  print(f"Plotting pipeline benchmark from {relpath(fname_base_pipeline,cwd)} to {relpath(path,cwd)}/figures/pipeline.pdf")
+  print(f"Plotting pipeline benchmark from {relpath(fname_base_pipeline,cwd)} to {relpath(path,cwd)}/figures/pipeline.{save_format}")
   df_base_pipeline = pd.read_csv(fname_base_pipeline)
 
   fig, ax = plt.subplots(figsize=(20,10), nrows=1, sharex=True)
@@ -309,10 +318,10 @@ def plot_pipeline(normalize=False):
   #percentage formatting
   ax.yaxis.set_major_formatter(ticker.PercentFormatter()) if normalize else ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
   normalized_str = "" if not normalize else "_normalized"
-  plt.savefig(path + "figures/pipeline" + normalized_str + ".pdf", bbox_inches='tight')
+  plt.savefig(path + "figures/pipeline" + normalized_str + f".{save_format}", bbox_inches='tight')
 
 def plot_lockstep_pipeline(normalize=False, log=False):
-  print(f"Plotting lockstep pipeline benchmark from {relpath(fname_full_pipeline,cwd)} to {relpath(path,cwd)}/figures/lockstep_pipeline.pdf")
+  print(f"Plotting lockstep pipeline benchmark from {relpath(fname_full_pipeline,cwd)} to {relpath(path,cwd)}/figures/lockstep_pipeline.{save_format}")
   df_full_pipeline = pd.read_csv(fname_full_pipeline)
 
   fig, ax = plt.subplots(figsize=(20,10), nrows=1, sharex=True)
@@ -379,11 +388,11 @@ def plot_lockstep_pipeline(normalize=False, log=False):
   ax.yaxis.set_major_formatter(ticker.PercentFormatter()) if normalize else ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
   normalized_str = "" if not normalize else "_normalized"
   log_str = "" if not log else "_log"  
-  plt.savefig(f"{path}/figures/lockstep_pipeline{normalized_str}{log_str}.pdf", bbox_inches='tight')
+  plt.savefig(f"{path}/figures/lockstep_pipeline{normalized_str}{log_str}.{save_format}", bbox_inches='tight')
 
 
 def plot_speedup():
-  #print(f"Plotting single-GPU speedup benchmark from {relpath(fname_base,cwd)} and {relpath(fname_one_gpu_dual + "1.csv",cwd)} to {relpath(path,cwd)}/figures/speedup.pdf") 
+  #print(f"Plotting single-GPU speedup benchmark from {relpath(fname_base,cwd)} and {relpath(fname_one_gpu_dual + "1.csv",cwd)} to {relpath(path,cwd)}/figures/speedup.{save_format}") 
   fig, ax = plt.subplots(figsize=(20,10), nrows=1, sharex=True)
   df_baseline = pd.read_csv(fname_base)
   df_dual_lockstep = pd.read_csv(fname_one_gpu_dual + "1.csv")
@@ -403,7 +412,7 @@ def plot_speedup():
   ax.set_ylabel(r"Speedup")
   ax.legend()
   ax.set_xlabel(r"Isomerspace $C_N$")
-  plt.savefig(path + "figures/speedup.pdf", bbox_inches='tight')
+  plt.savefig(path + f"figures/speedup.{save_format}", bbox_inches='tight')
 
 plot_batch_size()
 plot_baseline()
