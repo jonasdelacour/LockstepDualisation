@@ -41,8 +41,8 @@ int main(int argc, char** argv) {
       fprintf(stderr, "Syntax: %s <cpu|gpu> [N:200] [N_graphs:1000000] [N_runs:10] [N_warmup:1] [version:0] [filename:multi_gpu.csv]\n",argv[0]);
       return -1;
     }
-    if(argc >6 && (stoi(argv[6]) < 0 || stoi(argv[6]) > 4)){
-      fprintf(stderr, "Invalid kernel version %d, must be between 1 and 4.\n", stoi(argv[6]));
+    if(argc >6 && (stoi(argv[6]) < 0 || stoi(argv[6]) > 5)){
+      fprintf(stderr, "Invalid kernel version %d, must be between 1 and 5.\n", stoi(argv[6]));
       return -1;
     }
     string device_type = argv[1];
@@ -123,6 +123,9 @@ int main(int argc, char** argv) {
             case 4:
                 for(int j = 0; j < N_d; j++) {dualise_sycl_v4<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);}    //Dualise the batch.
                 break;
+            case 5:
+                for(int j = 0; j < N_d; j++) {dualise_sycl_v5<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);}    //Dualise the batch.
+                break;
             default:
                 break;
             }
@@ -142,6 +145,9 @@ int main(int argc, char** argv) {
                 break;
             case 4:
                 for(int j = 0; j < N_d; j++) dualise_sycl_v4<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);    //Dualise the batch.
+                break;
+            case 5:
+                for(int j = 0; j < N_d; j++) dualise_sycl_v5<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);    //Dualise the batch.
                 break;
             default:
                 break;

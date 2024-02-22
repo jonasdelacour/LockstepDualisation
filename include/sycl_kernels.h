@@ -17,6 +17,9 @@ void dualise_sycl_v3            (sycl::queue&Q, IsomerBatch<T,K>& B, const Launc
 template <int MaxDegree, typename T, typename K>
 void dualise_sycl_v4            (sycl::queue&Q, IsomerBatch<T,K>& B, const LaunchPolicy policy = LaunchPolicy::SYNC);
 
+template <int MaxDegree, typename T, typename K>
+void dualise_sycl_v5            (sycl::queue&Q, IsomerBatch<T,K>& B, const LaunchPolicy policy = LaunchPolicy::SYNC);
+
 template <typename T, typename K>
 void tutte_layout_sycl          (sycl::queue&Q, IsomerBatch<T,K>& B, const LaunchPolicy policy = LaunchPolicy::SYNC);
 
