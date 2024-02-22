@@ -8,6 +8,7 @@ from matplotlib.ticker import MaxNLocator
 from mpl_toolkits.axes_grid1.inset_locator import (inset_axes, mark_inset)
 from os.path import relpath
 
+Fontsize = 30
 rc["legend.markerscale"] = 2.0
 rc["legend.framealpha"] = 0
 rc["legend.labelspacing"] = 0.1
@@ -16,26 +17,59 @@ rc['axes.autolimit_mode'] = 'data'
 rc['axes.xmargin'] = 0
 rc['axes.ymargin'] = 0.10
 rc['axes.titlesize'] = 30
-rc['axes.labelsize'] = 24
+rc['axes.labelsize'] = Fontsize
+rc['xtick.direction'] = 'in'
+rc['ytick.direction'] = 'in'
 rc['font.sans-serif'] = "Times New Roman"
 rc['font.serif'] = "Times New Roman"
-rc['xtick.labelsize'] = 20
-rc['ytick.labelsize'] = 20
+rc['xtick.labelsize'] = Fontsize
+rc['ytick.labelsize'] = Fontsize
 rc['axes.grid'] = True
 rc['grid.linestyle'] = '-'
 rc['grid.alpha'] = 0.2
-rc['legend.fontsize'] = 20
+rc['legend.fontsize'] = int(Fontsize*0.9)
 rc['legend.loc'] = 'upper left'
 rc["figure.autolayout"] = True
 rc["savefig.dpi"] = 300
 rc["text.usetex"] = True
 rc["font.family"] = "Times New Roman"
-rc["lines.markeredgecolor"] = "k"
-rc["lines.markeredgewidth"] = 0.5
+rc["lines.markeredgecolor"] = matplotlib.colors.to_rgba('black', 0.5)
+rc["lines.markeredgewidth"] = 0.01
+rc["legend.markerscale"] = 2.0
+rc['text.latex.preamble'] = r'\usepackage{amssymb}'
 rc.update({
   "text.usetex": True,
   "font.family": "Times New Roman"
 })
+
+def set_fontsizes(fontsize):
+  rc['axes.labelsize'] = fontsize
+  rc['xtick.labelsize'] = fontsize
+  rc['ytick.labelsize'] = fontsize
+  rc['legend.fontsize'] = int(fontsize*0.9)
+
+
+#Color dictionary
+CD = { 
+  "Baseline" : 'r', 
+  "CPU_V1" :    "#FDEE00", 
+  "CPU_V2" :    "#06D6A0", 
+  "CPU_V3" :    "#FF4365", 
+  "CPU_V4" :    "#14080E", 
+  "OMP_TP" :    "#6320EE",
+  "OMP_SM" :    "#963D5A", 
+
+  "Dual" :      "#7570b3", 
+  "Generate" :  "#d95f02", 
+  "Projection" :"#e7298a", 
+  "Tutte" :     "#66a61e", 
+  "Opt" :       "#8931EF", 
+
+  "GPU_V1" :    "#1f77b4", 
+  "GPU_V2" :    "#e377c2", 
+  "GPU_V3" :    "#0D9276", 
+  "GPU_V4" :    "#8c564b", 
+}
 
 if(len(sys.argv)>1):
     benchname = sys.argv[1]
@@ -57,11 +91,9 @@ fname_full_pipeline = f'{path}full_pipeline.csv'
 fname_omp = f'{path}omp_multicore_'
 fname_one_cpu = f'{path}one_cpu_v' 
 save_format = "pdf"
+KName = r"SYCL "
 
 os.makedirs(f"{path}/figures",exist_ok=True)
-
-colors = ["#1f77b4", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#FFBA49", "#23001E", "#EF5B5B", "#5A7D7C"]
-CD = { "Baseline" : colors[0], "GPU_V1" : colors[1], "GPU_V2" : colors[2], "2 GPU_V1" :  colors[3] ,"2 GPU_V2" : colors[4]}
 MarkerList = ['s', 'P', 'v', 'p']
 MarkerSizes = [10, 10, 10, 10]
 def plot_dual_cpu():
@@ -77,16 +109,16 @@ def plot_dual_cpu():
   N = df0["N"].to_numpy()
   #ax.fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2), color='k', alpha=0.1, label=r"2$\sigma$")
   #ax.plot(df0["N"].to_numpy(), df0["T"].to_numpy(), 'D:', color=CD["OMP_SM"], label="OpenMP Shared-Memory")
-  ax[0].plot(N, df1["T"].to_numpy(), 'D:', color=CD["OMP_TP"], label="OpenMP Task-Parallel")
+  ax[0].plot(N, df1["T"].to_numpy(), 'D:', color=CD["OMP_TP"], label=r"OpenMP [CPU]" + " Task-Parallel")
   #ax[0].fill_between(N, (df1["T"].to_numpy() - df1["TSD"].to_numpy()*2), (df1["T"].to_numpy()+df1["TSD"].to_numpy()*2), color='k', alpha=0.1, label=r"2$\sigma$")
-  ax[1].plot(N, df1["T"].to_numpy() / N, 'D:', color=CD["OMP_TP"], label="OpenMP Task-Parallel")
+  ax[1].plot(N, df1["T"].to_numpy() / N, 'D:', color=CD["OMP_TP"], label=r"OpenMP [CPU]" + " Task-Parallel")
   #ax[1].fill_between(N, (df1["T"].to_numpy() - df1["TSD"].to_numpy()*2) / N, (df1["T"].to_numpy()+df1["TSD"].to_numpy()*2) / N, color='k', alpha=0.1, label=r"2$\sigma$")
   
   for i in range(1,5):
     df0 = pd.read_csv(fname_one_cpu + str(i) + ".csv")
     #ax[0].fill_between(N, (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2), color='k', alpha=0.1)
-    ax[0].plot(N, df0["T"].to_numpy(), f'{MarkerList[i-1]}:', color=CD["GPU_V" + str(i)], label=KName + " V" + str(i))
-    ax[1].plot(N, df0["T"].to_numpy() / N, f'{MarkerList[i-1]}:', color=CD["GPU_V" + str(i)], label=KName + " V" + str(i))
+    ax[0].plot(N, df0["T"].to_numpy(), f'{MarkerList[i-1]}:', color=CD["CPU_V" + str(i)], label=KName + r"[CPU] V" + str(i))
+    ax[1].plot(N, df0["T"].to_numpy() / N, f'{MarkerList[i-1]}:', color=CD["CPU_V" + str(i)], label=KName + r"[CPU] V" + str(i))
     #ax[1].fill_between(N, (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2) / N, (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2) / N, color='k', alpha=0.1)
 
 
@@ -115,38 +147,25 @@ def plot_dual_sycl():
     else:
       ax[0].fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2), color='k', alpha=0.1)
       ax[1].fill_between(df0["N"].to_numpy(), (df0["T"].to_numpy() - df0["TSD"].to_numpy()*2)*1e3 / df0["N"].to_numpy(), (df0["T"].to_numpy()+df0["TSD"].to_numpy()*2)*1e3 / df0["N"].to_numpy(), color='k', alpha=0.1) 
-    ax[0].plot(df0["N"].to_numpy(), df0["T"].to_numpy(), 'o:', color=CD["2 GPU_V" + str(i)], label=KName + " V" + str(i))
-    ax[1].plot(df0["N"].to_numpy(), df0["T"].to_numpy()*1e3 / df0["N"].to_numpy(), 'o:', color=CD["2 GPU_V" + str(i)], label=KName + " V" + str(i))
+    ax[0].plot(df0["N"].to_numpy(), df0["T"].to_numpy(), 'o:', color=CD["GPU_V" + str(i)], label=KName + " [GPU] V" + str(i))
+    ax[1].plot(df0["N"].to_numpy(), df0["T"].to_numpy()*1e3 / df0["N"].to_numpy(), 'o:', color=CD["GPU_V" + str(i)], label=KName + " [GPU] V" + str(i))
       
   ax[0].set_ylabel(r"Time / Graph [ns]")
   ax[0].set_ymargin(0.0)
   ax[1].set_ymargin(0.0)
   ax[0].legend(loc="upper left")
-  ax[0].vlines(96, ax[0].get_ylim()[0], ax[0].get_ylim()[1], color=CD["2 GPU_V4"], linestyle='--', label=r"Kernel 4 Saturation")
-  ax[0].vlines(188, ax[0].get_ylim()[0], ax[0].get_ylim()[1], color=CD["2 GPU_V1"], linestyle='--', label=r"Kernel 1 Saturation")
-  ax[1].vlines(96, ax[1].get_ylim()[0], ax[1].get_ylim()[1], color=CD["2 GPU_V4"], linestyle='--', label=r"Kernel 4 Saturation")
-  ax[1].vlines(188, ax[1].get_ylim()[0], ax[1].get_ylim()[1], color=CD["2 GPU_V1"], linestyle='--', label=r"Kernel 1 Saturation")
+  ax[0].vlines(96, ax[0].get_ylim()[0], ax[0].get_ylim()[1], color=CD["GPU_V4"], ls='--', label=r"Kernel 4 Saturation")
+  ax[0].vlines(188, ax[0].get_ylim()[0], ax[0].get_ylim()[1], color=CD["GPU_V1"], ls='--', label=r"Kernel 1 Saturation")
+  ax[1].vlines(96, ax[1].get_ylim()[0], ax[1].get_ylim()[1], color=CD["GPU_V4"], ls='--', label=r"Kernel 4 Saturation")
+  ax[1].vlines(188, ax[1].get_ylim()[0], ax[1].get_ylim()[1], color=CD["GPU_V1"], ls='--', label=r"Kernel 1 Saturation")
   ax[1].legend(bbox_to_anchor=(0.5, 0.9))
   ax[1].set_xlabel(r"Cubic Graph Size [\# Vertices]")
   ax[1].set_ylabel(r"Time / Vertex [ps]")
   plt.savefig(f"{path}/figures/kernel_benchmark.{save_format}", bbox_inches='tight')
 
-def adjust_brightness(color, amount):
-    """Adjust the brightness of a color by a given amount (-1 to 1)."""
-    # Convert the color to the RGB color space
-    r, g, b = tuple(int(color[i:i+2], 16) for i in (1, 3, 5))
-    # Convert the color to the HLS color space
-    h, l, s = colorsys.rgb_to_hls(r/255, g/255, b/255)
-    # Modify the lightness value
-    l = max(0, min(1, l + amount))
-    # Convert the color back to RGB and return it
-    r, g, b = tuple(round(c * 255) for c in colorsys.hls_to_rgb(h, l, s))
-    return f"#{r:02x}{g:02x}{b:02x}"
-# Modify the brightness of the colors
-#colors = [adjust_brightness(color, 0.2) for color in colors]
-CD = { "Baseline" : 'r', "GPU_V1" : colors[2], "GPU_V2" : colors[3], "2 GPU_V1" :  colors[4] ,"2 GPU_V2" : colors[0], "Dual" : f'#7570b3', "Generate" : f'#d95f02', "Projection" : f'#e7298a', "Tutte" : f'#66a61e', "Opt" : f'#8931EF' , "GPU_V3" : colors[5], "GPU_V4" : colors[6], "2 GPU_V3" : colors[7], "2 GPU_V4" : colors[8], "OMP_SM" : f'#963D5A', "OMP_TP" : f'#70A288'}
 
-KName = r"SYCL Kernel"
+
+
 
 ## Batch size
 
@@ -160,7 +179,7 @@ def plot_batch_size():
   Nrows = df_single_gpu_bs.shape[0]
   fig,ax = plt.subplots(figsize=(15,10))
   def add_line(ax, BS, T, SD, label, color, marker, linestyle):
-      ax.plot(BS, T, marker=marker, color=color, label=label, linestyle=linestyle)
+      ax.plot(BS, T, marker=marker, color=color, label=label, ls=linestyle)
       ax.fill_between(BS, T - SD, T + SD, alpha=0.1, color='k')
   
   ax.set_yscale('log')
@@ -237,9 +256,9 @@ def plot_weak_scaling():
   def std_div(a,b, a_std, b_std):
       return a/b * np.sqrt((a_std/a)**2 + (b_std/b)**2)
   fig, ax     = plt.subplots(figsize=(15, 15), nrows=2, sharex=True)
-  ax[0].plot(df1["N"].to_numpy(), df1["T"].to_numpy(), 'o:',  color=CD["GPU_V1"], label=f"1 GPU, $B_s = 2^{{{20}}}$")
-  ax[0].plot(df3["N"].to_numpy(), df3["T"].to_numpy(), 'o:',  color=CD["2 GPU_V1"], label=f"2 GPUs $B_s = 2^{{{21}}}$")
-  ax[0].plot(df2["N"].to_numpy(), df2["T"].to_numpy(), 'X--',  color=CD["2 GPU_V1"], label=f"2 GPUs $B_s = 2^{{{20}}}$")
+  ax[0].plot(df1["N"].to_numpy(), df1["T"].to_numpy(), 'o:',  color="k", label=f"1 GPU, $B_s = 2^{{{20}}}$")
+  ax[0].plot(df3["N"].to_numpy(), df3["T"].to_numpy(), 'o:',  color=CD["GPU_V1"], label=f"2 GPUs $B_s = 2^{{{21}}}$")
+  ax[0].plot(df2["N"].to_numpy(), df2["T"].to_numpy(), 'X--',  color=CD["GPU_V1"], label=f"2 GPUs $B_s = 2^{{{20}}}$")
   ax[0].fill_between(df1["N"].to_numpy(), df1["T"].to_numpy() - df1["TSD"].to_numpy()*1, df1["T"].to_numpy() + df1["TSD"].to_numpy()*1, alpha=0.1, color='k', label=r"1$\sigma$")
   ax[0].fill_between(df3["N"].to_numpy(), df3["T"].to_numpy() - df3["TSD"].to_numpy()*1, df3["T"].to_numpy() + df3["TSD"].to_numpy()*1, alpha=0.1, color='k')
   ax[0].fill_between(df2["N"].to_numpy(), df2["T"].to_numpy() - df2["TSD"].to_numpy()*1, df2["T"].to_numpy() + df2["TSD"].to_numpy()*1, alpha=0.1, color='k')
@@ -248,8 +267,8 @@ def plot_weak_scaling():
   print("Shapes: ", df1["N"].shape, df1["T"].shape, df3["T"].shape, df2["T"].shape)
 
   #Plot speedup
-  ax[1].plot(df1["N"].to_numpy(), df1["T"].to_numpy()/df3["T"].to_numpy(), 'o:',  color=CD["2 GPU_V1"], label=f"2 GPUs $B_s = 2^{{{21}}}$")
-  ax[1].plot(df1["N"].to_numpy(), df1["T"].to_numpy()/df2["T"].to_numpy(), 'X--',  color=CD["2 GPU_V1"], label=f"2 GPUs $B_s = 2^{{{20}}}$")
+  ax[1].plot(df1["N"].to_numpy(), df1["T"].to_numpy()/df3["T"].to_numpy(), 'o:',  color=CD["GPU_V1"], label=f"2 GPUs $B_s = 2^{{{21}}}$")
+  ax[1].plot(df1["N"].to_numpy(), df1["T"].to_numpy()/df2["T"].to_numpy(), 'X--',  color=CD["GPU_V1"], label=f"2 GPUs $B_s = 2^{{{20}}}$")
   std_1 = std_div(df1["T"].to_numpy(), df3["T"].to_numpy(), df1["TSD"].to_numpy(), df3["TSD"].to_numpy())
   std_2 = std_div(df1["T"].to_numpy(), df2["T"].to_numpy(), df1["TSD"].to_numpy(), df2["TSD"].to_numpy())
   ax[1].fill_between(df1["N"].to_numpy(), df1["T"].to_numpy()/df3["T"].to_numpy() - std_1, df1["T"].to_numpy()/df3["T"].to_numpy() + std_1, alpha=0.1, color='k', label=r"1$\sigma$")
@@ -286,29 +305,23 @@ def plot_pipeline(normalize=False):
   parallel_sd = np.sqrt(opt_sd**2 + tutte_sd**2 + project_sd**2)
   total = parallel + overhead + gen + dual
 
-  def plot_normalized_line(ax, x, y, y_sd, label, color, marker, linestyle, mfc_bool=True):
-      if mfc_bool:
-          ax.plot(x, 1e2* y/total, marker=marker, color=color, label=label, linestyle=linestyle, mfc=color) #Normalized to total time, shown as percentage
-      else:
-          ax.plot(x, 1e2* y/total, marker=marker, color=color, label=label, linestyle=linestyle, mfc="None") #Normalized to total time, shown as percentage
+  def plot_normalized_line(ax, x, y, y_sd, label, color, marker, linestyle, ms_scale=1.):
+      ax.plot(x, 1e2* y/total, marker=marker, color=color, label=label, ls=linestyle, mfc=color, ms = ms_scale*rc["lines.markersize"]) #Normalized to total time, shown as percentage
       ax.fill_between(x, 1e2*(y - y_sd)/total, 1e2*(y + y_sd)/total, alpha=0.1, color='k')
 
-  def plot_absolute_line(ax, x, y, y_sd, label, color, marker, linestyle, mfc_bool=True):
-    if mfc_bool:
-        ax.plot(x,  y/1e3, marker=marker, color=color, label=label, linestyle=linestyle, mfc=color) #Normalized to total time, shown as percentage
-    else:
-        ax.plot(x,  y/1e3, marker=marker, color=color, label=label, linestyle=linestyle, mfc="None") #Normalized to total time, shown as percentage
+  def plot_absolute_line(ax, x, y, y_sd, label, color, marker, linestyle, ms_scale=1.):
+    ax.plot(x,  y/1e3, marker=marker, color=color, label=label, ls=linestyle, mfc=color, ms = ms_scale*rc["lines.markersize"]) #Normalized to total time, shown as percentage
     ax.fill_between(x, (y - y_sd)/1e3, (y + y_sd)/1e3, alpha=0.1, color='k')
   if normalize:
-    plot_normalized_line(ax, natoms, gen, gen_sd, "Isomer-space graph generation", CD["Generate"], 'o', ':', False)
-    plot_normalized_line(ax, natoms, parallel, parallel_sd, "Lockstep-parallel geometry optimization", "k", '*', ':')
+    plot_normalized_line(ax, natoms, gen, gen_sd, "Isomer-space graph generation", CD["Generate"], 'o', ':')
+    plot_normalized_line(ax, natoms, parallel, parallel_sd, "Lockstep-parallel geometry optimization", "k", r'$\bigstar$', ':', 1.5)
     plot_normalized_line(ax, natoms, overhead, overhead_sd, "Overhead", "blue", 'o', ':')
-    plot_normalized_line(ax, natoms, dual, dual_sd, "Baseline sequential dualization", CD["Dual"], '*', ':')
+    plot_normalized_line(ax, natoms, dual, dual_sd, "Baseline sequential dualization", CD["Dual"], r'$\bigstar$', ':', 1.5)
   else:
-    plot_absolute_line(ax, natoms, parallel, parallel_sd, "Lockstep-parallel geometry optimization", "k", '*', ':')
-    plot_absolute_line(ax, natoms, gen, gen_sd, "Isomer-space graph generation", CD["Generate"], 'o', ':', False)
+    plot_absolute_line(ax, natoms, parallel, parallel_sd, "Lockstep-parallel geometry optimization", "k", r'$\bigstar$', ':', 1.5)
+    plot_absolute_line(ax, natoms, gen, gen_sd, "Isomer-space graph generation", CD["Generate"], 'o', ':')
     plot_absolute_line(ax, natoms, overhead, overhead_sd, "Overhead", "blue", 'o', ':')
-    plot_absolute_line(ax, natoms, dual, dual_sd, "Baseline sequential dualization", CD["Dual"], '*', ':')
+    plot_absolute_line(ax, natoms, dual, dual_sd, "Baseline sequential dualization", CD["Dual"], r'$\bigstar$', ':', 1.5)
       
   ax.set_ylabel(r"Runtime Fraction [$\%$]") if normalize else ax.set_ylabel(r"Time / Graph [$\mu$s]")
   ax.legend()
@@ -345,26 +358,17 @@ def plot_lockstep_pipeline(normalize=False, log=False):
   parallel_sd = np.sqrt(opt_sd**2 + tutte_sd**2 + project_sd**2)
   total = parallel + overhead + gen + dual
 
-  def plot_normalized_line(ax, x, y, y_sd, label, color, marker, linestyle, mfc_bool=True):
-      if mfc_bool:
-          ax.plot(x, 1e2* y/total, marker=marker, color=color, label=label, linestyle=linestyle, mfc=color) #Normalized to total time, shown as percentage
-      else:
-          ax.plot(x, 1e2* y/total, marker=marker, color=color, label=label, linestyle=linestyle, mfc="None") #Normalized to total time, shown as percentage
+  def plot_normalized_line(ax, x, y, y_sd, label, color, marker, linestyle, ms_scale=1.):
+      ax.plot(x, 1e2* y/total, marker=marker, color=color, label=label, ls=linestyle, mfc=color, ms = ms_scale*rc["lines.markersize"]) #Normalized to total time, shown as percentage
       ax.fill_between(x, 1e2*(y - y_sd)/total, 1e2*(y + y_sd)/total, alpha=0.1, color='k')
 
-  def plot_absolute_line(ax, x, y, y_sd, label, color, marker, linestyle, mfc_bool=True):
-    if mfc_bool:
-        ax.plot(x,  y/1e3, marker=marker, color=color, label=label, linestyle=linestyle, mfc=color) #Normalized to total time, shown as percentage
-    else:
-        ax.plot(x,  y/1e3, marker=marker, color=color, label=label, linestyle=linestyle, mfc="None") #Normalized to total time, shown as percentage
+  def plot_absolute_line(ax, x, y, y_sd, label, color, marker, linestyle, ms_scale=1.):
+    ax.plot(x,  y/1e3, marker=marker, color=color, label=label, ls=linestyle, mfc=color, ms = ms_scale*rc["lines.markersize"]) #Absolute time
     ax.fill_between(x, (y - y_sd)/1e3, (y + y_sd)/1e3, alpha=0.1, color='k')
 
-  def plot_logabsolute_line(ax, x, y, y_sd, label, color, marker, linestyle, mfc_bool=True):
+  def plot_logabsolute_line(ax, x, y, y_sd, label, color, marker, linestyle, ms_scale=1.):
     ax.set_yscale("log")
-    if mfc_bool:
-        ax.plot(x,  y/1e3, marker=marker, color=color, label=label, linestyle=linestyle, mfc=color) #Normalized to total time, shown as percentage
-    else:
-        ax.plot(x,  y/1e3, marker=marker, color=color, label=label, linestyle=linestyle, mfc="None") #Normalized to total time, shown as percentage
+    ax.plot(x,  y/1e3, marker=marker, color=color, label=label, ls=linestyle, mfc=color, ms = ms_scale*rc["lines.markersize"]) #Set to log scale and plot absolute time
     ax.fill_between(x, (y - y_sd)/1e3 + ((y-y_sd)<0)*y_sd/1e3, (y + y_sd)/1e3, alpha=0.1, color='k')    
 
   if normalize:
@@ -374,10 +378,10 @@ def plot_lockstep_pipeline(normalize=False, log=False):
   else:
       plot_fun = plot_absolute_line
       
-  plot_fun(ax, natoms, parallel, parallel_sd, "Lockstep-parallel geometry optimization", "k", '*', ':')
-  plot_fun(ax, natoms, gen, gen_sd, "Isomer-space graph generation", CD["Generate"], 'o', ':', False)
+  plot_fun(ax, natoms, parallel, parallel_sd, "Lockstep-parallel geometry optimization", "k", r'$\bigstar$', ':', 1.5)
+  plot_fun(ax, natoms, gen, gen_sd, "Isomer-space graph generation", CD["Generate"], 'o', ':')
   plot_fun(ax, natoms, overhead, overhead_sd, "Overhead", "blue", 'o', ':')
-  plot_fun(ax, natoms, dual, dual_sd, "Lockstep-parallel dualization", CD["Dual"], '*', ':')
+  plot_fun(ax, natoms, dual, dual_sd, "Lockstep-parallel dualization", CD["Dual"], r'$\bigstar$', ':', 1.5)
 
   ax.set_ylabel(r"Runtime Fraction [$\%$]") if normalize else ax.set_ylabel(r"Time / Graph [$\mu$s]")
   ax.legend()
@@ -414,17 +418,19 @@ def plot_speedup():
   ax.set_xlabel(r"Isomerspace $C_N$")
   plt.savefig(path + f"figures/speedup.{save_format}", bbox_inches='tight')
 
+plot_dual_cpu()
+rc["lines.markersize"] = 8
 plot_batch_size()
 plot_baseline()
 plot_weak_scaling()
+plot_speedup()
+plot_dual_sycl()
+set_fontsizes(35)
 plot_pipeline(normalize=True)
 plot_pipeline(normalize=False)
 plot_lockstep_pipeline(normalize=True)
 plot_lockstep_pipeline(normalize=False)
 plot_lockstep_pipeline(normalize=False, log=True)
-plot_speedup()
-plot_dual_cpu()
-plot_dual_sycl()
 
 
 
