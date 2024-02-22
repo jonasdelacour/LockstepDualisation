@@ -80,7 +80,7 @@ env = source_and_get_environment(SYCL_setvars)
 def validate_kernel():
 # #Validate SYCL kernels against baseline dualisation
     if os.path.exists(f'{buildpath}validation/sycl/sycl_validation'):
-        process = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}validation/sycl/sycl_validation gpu'], env=env).wait()
+        subprocess.Popen(['/bin/bash', '-c', f'{buildpath}validation/sycl/sycl_validation gpu'], env=env).wait()
     else:
         print("SYCL validation kernel not found. Make sure your SYCL environment is set up correctly. Then run `make all` again.")
         
@@ -91,7 +91,7 @@ def bench_batchsize():
     reset_file(f'{path}/single_gpu_bs.csv')
     if os.path.exists(f'{buildpath}benchmarks/sycl/dualisation') and num_gpus>0:
         for i in range(0,22):
-            proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {200} {2**(i)} {Ngpu_runs} {Ngpu_warmup} 4 1 {path}/single_gpu_bs.csv'], env=env); proc.wait()
+            subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {200} {2**(i)} {N_runs["gpu"]} {N_warmup["gpu"]} 4 1 {path}/single_gpu_bs.csv'], env=env).wait()
     elif os.path.exists(f'{buildpath}benchmarks/sycl/dualisation'):
         print("No GPUs found. Skipping batch size experiment.")
     else:
@@ -101,9 +101,18 @@ def bench_batchsize():
 # # ### Run the benchmarks
 
 def bench_baseline():
+    def check_file_exists(filepath, message):
+        if not os.path.exists(filepath):
+            print(message)
+            return False
+        return True
+
+    # Usage example:
+    if not check_file_exists(f'{buildpath}benchmarks/baseline', "Baseline binary not found. Skipping baseline benchmark"):
+        return
     reset_file(f'{path}/base.csv')
     for i in range(20,201,2):
-        os.system(f'{buildpath}benchmarks/baseline {i} {2**(8)} {Ncpu_runs} {Ncpu_warmup} 0 {path}/base.csv')
+        os.system(f'{buildpath}benchmarks/baseline {i} {2**(8)} {N_runs["cpu"]} {N_warmup["cpu"]} 0 {path}/base.csv')
     
 def bench_dualize(kernel_versions="all", devices="cpu"):
     if not os.path.exists(f'{buildpath}benchmarks/sycl/dualisation'):
@@ -132,7 +141,7 @@ def bench_dualize(kernel_versions="all", devices="cpu"):
         #Currently just running weak scaling for multi-GPU using the fastest kernel (v1)
         if "cpu" in device_range:
             #OpenMP Benchmark (2 Different Versions: Shared Memory Parallelism and Task Parallelism)
-            #proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/omp_multicore {i} {2**(20+Bathcsize_Offset["cpu"])} {Ncpu_runs} {Ncpu_warmup} 0 {path}/omp_multicore_sm.csv'], env=env); proc.wait()
+            #proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/omp_multicore {i} {2**(20+Bathcsize_Offset["cpu"])} {N_runs["cpu"]} {N_warmup["cpu"]} 0 {path}/omp_multicore_sm.csv'], env=env); proc.wait()
             proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/omp_multicore {i} {2**(20+Bathcsize_Offset["cpu"])} {N_runs["cpu"]} {N_warmup["cpu"]} 1 {path}/omp_multicore_tp.csv'], env=env); proc.wait()
         if "gpu" in device_range:
             proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {num_gpus*2**(20+Bathcsize_Offset["gpu"])} {N_runs["gpu"]} {N_warmup["gpu"]} 1 {num_gpus} {path}/multi_gpu_weak.csv'], env=env); proc.wait()
@@ -165,8 +174,8 @@ def bench_pipeline():
         print("No GPUs found. Skipping pipeline benchmark.")
         return
     for N in range(72,201,2):
-        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/baseline_pipeline gpu {N} {batch_size} {Ncpu_runs} {Ngpu_warmup} 1 1 {path}/base_pipeline.csv'], env=env).wait()
-        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/pipeline gpu {N} {batch_size} {Ngpu_runs} {Ngpu_warmup} 1 1 {path}/full_pipeline.csv'], env=env).wait()
+        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/baseline_pipeline gpu {N} {batch_size} {N_runs["gpu"]} {N_warmup["gpu"]} 1 1 {path}/base_pipeline.csv'], env=env).wait()
+        proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/pipeline gpu {N} {batch_size} {N_runs["gpu"]} {N_warmup["gpu"]} 1 1 {path}/full_pipeline.csv'], env=env).wait()
 
 
 
