@@ -193,12 +193,21 @@ void fill_fast(std::vector<IsomerBatch<T,K>>& B){
 }
 
 template void fill_fast(std::vector<IsomerBatch<float,uint16_t>>& B);
+template void fill_fast(std::vector<IsomerBatch<float,int32_t>>& B);
+template void fill_fast(std::vector<IsomerBatch<float,uint8_t>>& B);
+template void fill_fast(std::vector<IsomerBatch<float,uint32_t>>& B);
 
+template void fill(IsomerBatch<float,int32_t>& B, int set_div, int offset);
 template void fill(IsomerBatch<float,uint16_t>& B, int set_div, int offset);
 template void fill(IsomerBatch<double,uint16_t>& B, int set_div, int offset);
 
+template void bucky_fill(IsomerBatch<float,uint8_t>& B, int ntasks, int mytask_id);
 template void bucky_fill(IsomerBatch<float,uint16_t>& B, int ntasks, int mytask_id);
+template void bucky_fill(IsomerBatch<float,int32_t>& B, int ntasks, int mytask_id);
 template void bucky_fill(IsomerBatch<double,uint16_t>& B, int ntasks, int mytask_id);
 
+template bool bucky_fill(IsomerBatch<float,int32_t>& B, BuckyGen::buckygen_queue &Q);
 template bool bucky_fill(IsomerBatch<float,uint16_t>& B, BuckyGen::buckygen_queue &Q);
 template bool bucky_fill(IsomerBatch<double,uint16_t>& B, BuckyGen::buckygen_queue &Q);
+template bool bucky_fill(IsomerBatch<float,uint8_t>& B, BuckyGen::buckygen_queue &Q);
+

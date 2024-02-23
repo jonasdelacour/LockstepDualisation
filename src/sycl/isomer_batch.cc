@@ -100,7 +100,16 @@ void copy(IsomerBatch<T,K>& dest, IsomerBatch<T,K>& other){
 
 }
 
+template IsomerBatch<float, uint8_t>::IsomerBatch(size_t n_atom, size_t n_isomers);
 template IsomerBatch<float, uint16_t>::IsomerBatch(size_t n_atom, size_t n_isomers);
+template IsomerBatch<float, uint32_t>::IsomerBatch(size_t n_atom, size_t n_isomers);
+template IsomerBatch<float, int32_t>::IsomerBatch(size_t n_atom, size_t n_isomers);
+template IsomerBatch<float, uint8_t>::IsomerBatch();
 template IsomerBatch<float, uint16_t>::IsomerBatch();
+template IsomerBatch<float, uint32_t>::IsomerBatch();
+template IsomerBatch<float, int32_t>::IsomerBatch();
 
 template void copy<float,uint16_t>(IsomerBatch<float, uint16_t>& dest, IsomerBatch<float, uint16_t>& other);
+template void copy<float,int32_t>(IsomerBatch<float, int32_t>& dest, IsomerBatch<float, int32_t>& other);
+template void copy<float,uint8_t>(IsomerBatch<float, uint8_t>& dest, IsomerBatch<float, uint8_t>& other);
+template void copy<float,uint32_t>(IsomerBatch<float, uint32_t>& dest, IsomerBatch<float, uint32_t>& other);

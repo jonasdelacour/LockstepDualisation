@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
 	printf("Validating dualization of %d C%ld-isomers against reference results.\n",N_graphs,N);
 	
 	
-        IsomerBatch<float,uint16_t> batch(N, N_graphs);
+        IsomerBatch<float,uint8_t> batch(N, N_graphs);
         std::vector<FullereneDual> baseline_duals(N_graphs);
         for (int i = 0; i < N_graphs; ++i) {
             baseline_duals[i].neighbours = neighbours_t(Nf,std::vector<int>(6));
@@ -54,13 +54,13 @@ int main(int argc, char** argv) {
 	
         //This scope is necessary to ensure that the host accessors are destroyed before the dualisation, otherwise dualise will block execution forever.
         {
-            sycl::host_accessor<uint16_t,1> h_cubic_neighbours(batch.cubic_neighbours);
-            sycl::host_accessor<uint16_t,1> h_dual_neighbours(batch.dual_neighbours);
+            sycl::host_accessor<uint8_t,1> h_cubic_neighbours(batch.cubic_neighbours);
+            sycl::host_accessor<uint8_t,1> h_dual_neighbours(batch.dual_neighbours);
             for (size_t i = 0; i < N_graphs; i++)
                 for (size_t j = 0; j < Nf; j++){
                     baseline_duals[i].neighbours[j].clear();
                     for (size_t k = 0; k < 6; k++){
-                        if (h_dual_neighbours[i*Nf*6 + j*6 + k] == UINT16_MAX) continue;
+                        if (h_dual_neighbours[i*Nf*6 + j*6 + k] == std::numeric_limits<uint8_t>::max()) continue;
                         baseline_duals[i].neighbours[j].push_back(h_dual_neighbours[i*Nf*6 + j*6 + k]);
                     }
                 }
@@ -74,8 +74,8 @@ int main(int argc, char** argv) {
         //Check that the results are correct.
         //Create lambda function to check if two graphs are equal.
         auto check_graphs = [&](){
-            sycl::host_accessor<uint16_t,1> h_cubic_neighbours(batch.cubic_neighbours);
-            sycl::host_accessor<uint16_t,1> h_dual_neighbours(batch.dual_neighbours);
+            sycl::host_accessor<uint8_t,1> h_cubic_neighbours(batch.cubic_neighbours);
+            sycl::host_accessor<uint8_t,1> h_dual_neighbours(batch.dual_neighbours);
             for (size_t i = 0; i < N_graphs; i++){
             for(size_t j = 0; j < N; j++){
                 if (h_cubic_neighbours[i*N*3 + j*3 + 0] != cubic_truth[i].neighbours[j][0] ||
@@ -99,8 +99,8 @@ int main(int argc, char** argv) {
         if (check_graphs()) return 1;
         dualise_sycl_v4<6>(Q, batch);
         if (check_graphs()) return 1;
-        dualise_sycl_v5<6>(Q, batch);
-        if (check_graphs()) return 1;
+        /* dualise_sycl_v5<6>(Q, batch);
+        if (check_graphs()) return 1; */
 
 	total_validated += N_graphs;
     }

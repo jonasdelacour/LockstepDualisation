@@ -91,7 +91,7 @@ int main(int argc, char** argv) {
 
     //vector<IsomerBatch<float,uint16_t>> batches= {IsomerBatch<float,uint16_t>(N, N_graphs/N_d + N_graphs%N_d), IsomerBatch<float,uint16_t>(N, N_graphs/N_d + N_graphs%N_d)};
 
-    vector<IsomerBatch<float,uint16_t>> batches; for(int i = 0; i < N_d; i++) batches.push_back(IsomerBatch<float,uint16_t>(N, N_graphs/N_d + N_graphs%N_d));
+    vector<IsomerBatch<float,uint8_t>> batches; for(int i = 0; i < N_d; i++) batches.push_back(IsomerBatch<float,uint8_t>(N, N_graphs/N_d + N_graphs%N_d));
 
     /* if (N_graphs > IsomerDB::number_isomers(N)){ //If the isomerspace is too samll for the kernel benchmark fill up with duplicate graphs.
         auto buckyqueue = BuckyGen::start(N, false, false);
@@ -123,9 +123,6 @@ int main(int argc, char** argv) {
             case 4:
                 for(int j = 0; j < N_d; j++) {dualise_sycl_v4<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);}    //Dualise the batch.
                 break;
-            case 5:
-                for(int j = 0; j < N_d; j++) {dualise_sycl_v5<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);}    //Dualise the batch.
-                break;
             default:
                 break;
             }
@@ -145,9 +142,6 @@ int main(int argc, char** argv) {
                 break;
             case 4:
                 for(int j = 0; j < N_d; j++) dualise_sycl_v4<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);    //Dualise the batch.
-                break;
-            case 5:
-                for(int j = 0; j < N_d; j++) dualise_sycl_v5<6>(Qs[j], batches[j], LaunchPolicy::ASYNC);    //Dualise the batch.
                 break;
             default:
                 break;
