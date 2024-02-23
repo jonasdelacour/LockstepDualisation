@@ -128,29 +128,43 @@ def bench_dualize(kernel_versions="all", devices="cpu"):
         return
     if "gpu" in device_range: 
         reset_file(f'{path}/multi_gpu_weak.csv')
+        
     if "cpu" in device_range:
         #reset_file(f'{path}/omp_multicore_sm.csv')
         reset_file(f'{path}/omp_multicore_tp.csv')
 
     for j in kernel_range:
+        if "cpu" in device_range:
+            reset_file(f'{path}/one_cpu_v{j}_scaling.csv')
         if "gpu" in device_range: 
             reset_file(f'{path}/multi_gpu_v{j}.csv')
         for device in device_range:
             reset_file(f'{path}/one_{device}_v{j}.csv')
+    
     for i in range(20,201,2):
         #Currently just running weak scaling for multi-GPU using the fastest kernel (v1)
         if "cpu" in device_range:
             #OpenMP Benchmark (2 Different Versions: Shared Memory Parallelism and Task Parallelism)
             #proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/omp_multicore {i} {2**(20+Bathcsize_Offset["cpu"])} {N_runs["cpu"]} {N_warmup["cpu"]} 0 {path}/omp_multicore_sm.csv'], env=env); proc.wait()
-            proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/omp_multicore {i} {2**(20+Bathcsize_Offset["cpu"])} {N_runs["cpu"]} {N_warmup["cpu"]} 1 {path}/omp_multicore_tp.csv'], env=env); proc.wait()
+            subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/omp_multicore {i} {2**(20+Bathcsize_Offset["cpu"])} {N_runs["cpu"]} {N_warmup["cpu"]} 1 {path}/omp_multicore_tp.csv'], env=env).wait()
         if "gpu" in device_range:
-            proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {num_gpus*2**(20+Bathcsize_Offset["gpu"])} {N_runs["gpu"]} {N_warmup["gpu"]} 1 {num_gpus} {path}/multi_gpu_weak.csv'], env=env); proc.wait()
+            subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {num_gpus*2**(20+Bathcsize_Offset["gpu"])} {N_runs["gpu"]} {N_warmup["gpu"]} 1 {num_gpus} {path}/multi_gpu_weak.csv'], env=env).wait()
         for j in kernel_range:
             if "gpu" in device_range:
-                proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+Bathcsize_Offset["gpu"])} {N_runs["gpu"]} {N_warmup["gpu"]} {j} {num_gpus} {path}/multi_gpu_v{j}.csv'], env=env); proc.wait()
+                subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation gpu {i} {2**(20+Bathcsize_Offset["gpu"])} {N_runs["gpu"]} {N_warmup["gpu"]} {j} {num_gpus} {path}/multi_gpu_v{j}.csv'], env=env).wait()
             for device in device_range:
-                proc = subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation {device} {i} {2**(20+Bathcsize_Offset[device])} {N_runs[device]} {N_warmup[device]} {j} 1 {path}/one_{device}_v{j}.csv'], env=env);  proc.wait()
-            
+                subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation {device} {i} {2**(20+Bathcsize_Offset[device])} {N_runs[device]} {N_warmup[device]} {j} 1 {path}/one_{device}_v{j}.csv'], env=env).wait()
+    
+    if "cpu" in device_range:
+        scale_range = range(1, os.cpu_count()+1)
+        reset_file(f'{path}/omp_multicore_tp_scaling.csv')
+        for i in scale_range:
+            env["DPCPP_CPU_NUM_CUS"] = str(i) 
+            env["OMP_NUM_THREADS"] = str(i)
+            subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/omp_multicore {196} {2**(20+Bathcsize_Offset["cpu"])} {N_runs["cpu"]} {N_warmup["cpu"]} 1 {path}/omp_multicore_tp_scaling.csv'], env=env).wait()
+            for j in kernel_range:
+                subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation cpu {196} {2**(20+Bathcsize_Offset["cpu"])} {N_runs["cpu"]} {N_warmup["cpu"]} {j} 1 {path}/one_cpu_v{j}_scaling.csv'], env=env).wait()
+
 
 
 
