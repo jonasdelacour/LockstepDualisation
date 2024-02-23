@@ -127,7 +127,6 @@ def plot_kernel_cpu_benchmarks():
 
   N, T, TSD = read_csv(fname_omp + "tp.csv")
   if N is not None:
-  
     #ax[0].fill_between(N, (T - TSD*2), (T+TSD*2), color='k', alpha=0.1, label=r"2$\sigma$")
     #ax[0].plot(N, T, f'{Markers[-1]}:', ms=MS[-1], color=CD["OMP_TP"], label=KName + r"OpenMP [CPU]" + " Task-Parallel")
     ax[0].fill_between(N, (T - TSD*2) / N, (T+TSD*2) / N, color='k', alpha=0.1, label=r"2$\sigma$") 
@@ -454,26 +453,30 @@ def compute_numbers_for_paper():
 
   def std_div(a,b, a_std, b_std):
       return a/b * np.sqrt((a_std/a)**2 + (b_std/b)**2)
-
-  print(f"Multi-GPU Dualization Performance:      {1e3*np.mean(T_GPU[IX:]/N[IX:]):.2f} +/- {1e3*np.mean(TSD_GPU[IX:]/N[IX:]):.2f} ps/Vertex  @ (72 - C200)")
-  print(f"Multi-GPU Dualization Max Performance:  {1e3*np.min(T_GPU[IX:]/N[IX:]):.2f} ps/Vertex  @ (72 - C200)")
-  print(f"Multi-GPU Dualization Min Performance:  {1e3*np.max(T_GPU[IX:]/N[IX:]):.2f} ps/Vertex  @ (72 - C200)")
-  print(f"Time to dualize C200:                   {1e-9*T_GPU[-1]*NC200:.2f} +/- {1e-9*TSD_GPU[-1]*NC200:.2f} s")
-  print(f"Multi GPU Strong Scaling:               {np.mean(T1[IX:]/T_GPU[IX:]):.2f} +/- {np.mean(std_div(T1,T_GPU, TSD1,TSD_GPU)[IX:]):.2f} @ (72 - C200)")
-  print(f"Multi GPU Speedup:                      {np.mean(TB[IX:]/TW[IX:]):.2f} +/- {np.mean(std_div(TB,TW, TSD_B,TSD_W)[IX:]):.2f} @ (72 - C200)")
-  print(f"Multi GPU Max Speedup:                  {np.min(TB[IX:]/TW[IX:]):.0f}X @ (72 - C200)")
-  print(f"Multi GPU Min Speedup:                  {np.max(TB[IX:]/TW[IX:]):.0f}X @ (72 - C200)")
-  print(f"Single GPU Speedup:                     {np.mean(TB[IX:]/T1[IX:]):.0f}X +/- {np.mean(std_div(TB,T1, TSD_B,TSD1)[IX:]):.2f} @ (72 - C200)")
-  print(f"Single GPU Max Speedup:                 {np.min(TB[IX:]/T1[IX:]):.0f}X @ (72 - C200)")
-  print(f"Single GPU Min Speedup:                 {np.max(TB[IX:]/T1[IX:]):.0f}X @ (72 - C200)")
-  #CPU 
+  
   N, T_CPU, TSD_CPU = read_csv(fname_one_cpu + "4.csv")
   C100_IX= np.where(N == 100)[0][0]
-  print(f"Single-CPU Dualization Performance: {np.mean(T_CPU[C100_IX:]/N[C100_IX:]):.2f} +/- {np.mean(TSD_CPU[C100_IX:]/N[C100_IX:]):.2f} ps/Vertex  @ (C100 - C200)")
-  #print(f"Multi-GPU Dualization Performance: {T_GPU[C96_IX]/96:.2f} +/- {TSD_GPU[C96_IX]/96:.2f} ns/Vertex  @ (C96 - C200)")
+
+  from tabulate import tabulate
+
+  data = [
+      ["Multi-GPU Dualization Performance", f"{1e3*np.mean(T_GPU[IX:]/N[IX:]):.2f} +/- {1e3*np.mean(TSD_GPU[IX:]/N[IX:]):.2f}", "ps / vertex  @ [C72 - C200]"],
+      ["Multi-GPU Dualization Max Performance", f"{1e3*np.min(T_GPU[IX:]/N[IX:]):.2f}", "ps / vertex  @ [C72 - C200]"],
+      ["Multi-GPU Dualization Min Performance", f"{1e3*np.max(T_GPU[IX:]/N[IX:]):.2f}", "ps / vertex  @ [C72 - C200]"],
+      ["Time to dualize C200", f"{1e-9*T_GPU[-1]*NC200:.2f} +/- {1e-9*TSD_GPU[-1]*NC200:.2f}", "s"],
+      ["Multi GPU Strong Scaling", f"{np.mean(T1[IX:]/T_GPU[IX:]):.2f} +/- {np.mean(std_div(T1,T_GPU, TSD1,TSD_GPU)[IX:]):.2f}", "@ [C72 - C200]"],
+      ["Multi GPU Speedup", f"{np.mean(TB[IX:]/TW[IX:]):.2f} +/- {np.mean(std_div(TB,TW, TSD_B,TSD_W)[IX:]):.2f}", "@ [C72 - C200]"],
+      ["Multi GPU Max Speedup", f"{np.min(TB[IX:]/TW[IX:]):.0f}", "X @ [C72 - C200]"],
+      ["Multi GPU Min Speedup", f"{np.max(TB[IX:]/TW[IX:]):.0f}", "X @ [C72 - C200]"],
+      ["Single GPU Speedup", f"{np.mean(TB[IX:]/T1[IX:]):.0f} +/- {np.mean(std_div(TB,T1, TSD_B,TSD1)[IX:]):.2f}", "X @ [C72 - C200]"],
+      ["Single GPU Max Speedup", f"{np.min(TB[IX:]/T1[IX:]):.0f}", "X @ [C72 - C200]"],
+      ["Single GPU Min Speedup", f"{np.max(TB[IX:]/T1[IX:]):.0f}", "X @ [C72 - C200]"],
+      ["Single-CPU Dualization Performance", f"{np.mean(T_CPU[C100_IX:]/N[C100_IX:]):.2f} +/- {np.mean(TSD_CPU[C100_IX:]/N[C100_IX:]):.2f}", "ns / vertex  @ (C100 - C200)"]
+  ]
+
+  print(tabulate(data, headers=["Metric", "Value", "Units"], tablefmt="fancy_grid"))
 
 
-compute_numbers_for_paper()
 plot_kernel_cpu_benchmarks() #Can't use large markers for this plot, since data points are too close together
 rc["lines.markersize"] = 8
 plot_batch_size()
@@ -489,4 +492,4 @@ plot_lockstep_pipeline(normalize=True)
 plot_lockstep_pipeline(normalize=False)
 plot_lockstep_pipeline(normalize=False, log=True)
 
-
+compute_numbers_for_paper()
