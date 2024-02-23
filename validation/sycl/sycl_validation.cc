@@ -99,8 +99,7 @@ int main(int argc, char** argv) {
         if (check_graphs()) return 1;
         dualise_sycl_v4<6>(Q, batch);
         if (check_graphs()) return 1;
-        /* dualise_sycl_v5<6>(Q, batch);
-        if (check_graphs()) return 1; */
+    
 
 	total_validated += N_graphs;
     }
