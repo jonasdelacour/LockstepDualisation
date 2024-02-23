@@ -13,6 +13,8 @@ using namespace sycl;
 #define mod(i,n) i + ((i < 0) - (i >= n)) * n
 #define UINT_TYPE_MAX std::numeric_limits<UINT_TYPE>::max()
 #define EMPTY_NODE()  std::numeric_limits<node_t>::max()
+#define CPU_WGS_VC 212
+#define CPU_WGS_VT 108
 
 template <int MaxDegree, typename T, typename K> class Dualise1 {};
 template <int MaxDegree, typename T, typename K> class Dualise2 {};
@@ -132,11 +134,11 @@ int get_best_work_group_size(int numToRound, const std::string& kernel_name, con
 template <int MaxDegree, typename T, typename K>
 void dualise_sycl_v4(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy policy){
     INT_TYPEDEFS(K);
-    
     if(policy == LaunchPolicy::SYNC) Q.wait();
     Q.submit([&](handler &h) {
         auto N = batch.n_atoms;
         auto Nf = batch.n_faces;
+        auto WGS = Q.get_device().is_cpu() ? CPU_WGS_VC : N;
         auto capacity = batch.m_capacity;
         
         //Create local accessors to shared memory
@@ -156,7 +158,7 @@ void dualise_sycl_v4(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
         #if GRID_STRIDED
         h.parallel_for<Dualise4<MaxDegree,T,K>>(sycl::nd_range(sycl::range{N*n_blocks_strided}, sycl::range{N}), [=](nd_item<1> nditem) {
         #else
-        h.parallel_for<Dualise4<MaxDegree,T,K>>(sycl::nd_range(sycl::range{N*capacity}, sycl::range{N}), [=](nd_item<1> nditem) {
+        h.parallel_for<Dualise4<MaxDegree,T,K>>(sycl::nd_range(sycl::range{WGS*capacity}, sycl::range{WGS}), [=](nd_item<1> nditem) {
         #endif
 
             auto cta = nditem.get_group();
@@ -187,7 +189,6 @@ void dualise_sycl_v4(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
                     }
                 }
             }
-            sycl::group_barrier(cta);
 
             node_t scan_result = exclusive_scan_over_group(cta, rep_count, plus<node_t>{});
 
@@ -203,7 +204,8 @@ void dualise_sycl_v4(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
                 }
             }
             sycl::group_barrier(cta);
-//
+//          
+            if(thid < N){
             auto [u, v_idx] = arc_list[thid];
             auto v =        FD.dual_neighbours[u*MaxDegree + v_idx];
             auto uv_prev =  FD.get_node(u, int(v_idx)-1);
@@ -213,6 +215,7 @@ void dualise_sycl_v4(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
             auto edge_b = FD.get_cannonical_triangle_arc(v, u, uv_prev); cubic_neighbours_dev[isomer_idx*N*3 + thid*3 + 0] = triangle_numbers[edge_b[0]*MaxDegree + FD.dedge_ix(edge_b[0], edge_b[1])];
             auto edge_c = FD.get_cannonical_triangle_arc(w, v);          cubic_neighbours_dev[isomer_idx*N*3 + thid*3 + 1] = triangle_numbers[edge_c[0]*MaxDegree + FD.dedge_ix(edge_c[0], edge_c[1])];
             auto edge_d = FD.get_cannonical_triangle_arc(u, w, uw_next); cubic_neighbours_dev[isomer_idx*N*3 + thid*3 + 2] = triangle_numbers[edge_d[0]*MaxDegree + FD.dedge_ix(edge_d[0], edge_d[1])];
+            }
 
             #if GRID_STRIDED
             }
@@ -230,6 +233,7 @@ void dualise_sycl_v1(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
     if(policy == LaunchPolicy::SYNC) Q.wait();
     auto subgroup_size = Q.get_device().get_info<info::device::sub_group_sizes>()[0];
     size_t lcm = roundUp(batch.n_faces, subgroup_size); 
+    if (Q.get_device().is_cpu()) lcm = CPU_WGS_VT;
     Q.submit([&](handler &h) {
         auto N = batch.n_atoms;
         auto Nf = batch.n_faces;
@@ -270,7 +274,6 @@ void dualise_sycl_v1(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
             node_t cannon_arcs[MaxDegree]; for(size_t i=0;i<MaxDegree;i++) cannon_arcs[i] = EMPTY_NODE(); // memset sets bytes, but node_t is multi-byte.
             node_t rep_count  = 0;
             sycl::group_barrier(cta);     
-
             if (thid < Nf){
                 for (node_t i = 0; i < FD.face_degrees[thid]; i++){
                     node2 cannon_arc = FD.get_cannonical_triangle_arc(thid, FD.dual_neighbours[thid*MaxDegree + i], FD.get_node(thid, i+1));
@@ -319,6 +322,7 @@ template <int MaxDegree, typename T, typename K>
 void dualise_sycl_v2(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy policy){
     INT_TYPEDEFS(K);
     
+    auto WGS = Q.get_device().is_cpu() ? CPU_WGS_VT: batch.n_faces;
     if(policy == LaunchPolicy::SYNC) Q.wait();
     Q.submit([&](handler &h) {
         auto N = batch.n_atoms;
@@ -342,7 +346,7 @@ void dualise_sycl_v2(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
         #if GRID_STRIDED
         h.parallel_for<Dualise2<MaxDegree,T,K>>(sycl::nd_range(sycl::range{Nf*n_blocks_strided}, sycl::range{N}), [=](nd_item<1> nditem) {
         #else
-        h.parallel_for<Dualise2<MaxDegree,T,K>>(sycl::nd_range(sycl::range{Nf*capacity}, sycl::range{Nf}), [=](nd_item<1> nditem) {
+        h.parallel_for<Dualise2<MaxDegree,T,K>>(sycl::nd_range(sycl::range{WGS*capacity}, sycl::range{WGS}), [=](nd_item<1> nditem) {
         #endif
             auto cta = nditem.get_group();
             auto thid = nditem.get_local_linear_id();
@@ -363,7 +367,7 @@ void dualise_sycl_v2(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
             node_t cannon_arcs[MaxDegree]; for(size_t i=0;i<MaxDegree;i++) cannon_arcs[i] = EMPTY_NODE(); // memset sets bytes, but node_t is multi-byte.
             node_t rep_count  = 0;
             sycl::group_barrier(cta);     
-
+            if (thid < Nf)
             for (node_t i = 0; i < FD.face_degrees[thid]; i++){
                 node2 cannon_arc = FD.get_cannonical_triangle_arc(thid, FD.dual_neighbours[thid*MaxDegree + i], FD.get_node(thid, i+1));
                 if (cannon_arc[0] == thid){
@@ -374,18 +378,20 @@ void dualise_sycl_v2(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
 
             node_t scan_result = exclusive_scan_over_group(cta, rep_count, plus<node_t>{});
 
-            node_t arc_count = 0;
-            for (node_t i = 0; i < FD.face_degrees[thid]; i++){
-                if(cannon_arcs[i] != EMPTY_NODE()){
-                    auto idx = scan_result + arc_count;
-                    triangle_numbers[thid*MaxDegree + i] = idx;
-                    //arc_list[idx] = {node_t(thid), cannon_arcs[i]};
-                    ++arc_count;
-                }    
+            if (thid < Nf){
+                node_t arc_count = 0;
+                for (node_t i = 0; i < FD.face_degrees[thid]; i++){
+                    if(cannon_arcs[i] != EMPTY_NODE()){
+                        auto idx = scan_result + arc_count;
+                        triangle_numbers[thid*MaxDegree + i] = idx;
+                        //arc_list[idx] = {node_t(thid), cannon_arcs[i]};
+                        ++arc_count;
+                    }    
+                }
             }
 
             sycl::group_barrier(cta);
-            
+            if(thid < Nf)
             for(node_t i = 0; i < FD.face_degrees[thid]; i++){
                 if(cannon_arcs[i] != EMPTY_NODE()){
                     auto idx = triangle_numbers[thid*MaxDegree + i];
@@ -467,8 +473,8 @@ void dualise_sycl_v3(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
     static DualBuffers<MaxDegree, K> buffers(batch.n_atoms, batch.m_capacity, Q.get_device());
     buffers.update(batch.n_atoms, batch.m_capacity, Q.get_device());
     auto d_idx = buffers.get_device_index(Q.get_device());
-
-    
+    auto WGS1 = Q.get_device().is_cpu() ? CPU_WGS_VT: batch.n_faces;
+    auto WGS2 = Q.get_device().is_cpu() ? CPU_WGS_VC: batch.n_atoms;
     if(policy == LaunchPolicy::SYNC) Q.wait();
     Q.submit([&](handler &h) {
         auto N = batch.n_atoms;
@@ -491,7 +497,7 @@ void dualise_sycl_v3(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
         #if GRID_STRIDED
         h.parallel_for<Dualise3_1<MaxDegree,T,K>>(sycl::nd_range(sycl::range{Nf*n_blocks_strided}, sycl::range{N}), [=](nd_item<1> nditem) {
         #else
-        h.parallel_for<Dualise3_1<MaxDegree,T,K>>(sycl::nd_range(sycl::range{Nf*capacity}, sycl::range{Nf}), [=](nd_item<1> nditem) {
+        h.parallel_for<Dualise3_1<MaxDegree,T,K>>(sycl::nd_range(sycl::range{WGS1*capacity}, sycl::range{WGS1}), [=](nd_item<1> nditem) {
         #endif
             auto cta = nditem.get_group();
             auto thid = nditem.get_local_linear_id();
@@ -515,6 +521,7 @@ void dualise_sycl_v3(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
             node_t rep_count  = 0;
             sycl::group_barrier(cta);     
 
+            if (thid < Nf)
             for (node_t i = 0; i < FD.face_degrees[thid]; i++){
                 node2 cannon_arc = FD.get_cannonical_triangle_arc(thid, FD.dual_neighbours[thid*MaxDegree + i], FD.get_node(thid, i+1));
                 if (cannon_arc[0] == thid){
@@ -522,11 +529,11 @@ void dualise_sycl_v3(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
                     rep_count++;
                 }
             }
-            sycl::group_barrier(cta);
 
             node_t scan_result = exclusive_scan_over_group(cta, rep_count, plus<node_t>{});
 
             node_t arc_count = 0;
+            if (thid < Nf)
             for (node_t i = 0; i < FD.face_degrees[thid]; i++){
                 if(cannon_arcs[i] != EMPTY_NODE()){
                     auto idx = scan_result + arc_count;
@@ -566,7 +573,7 @@ void dualise_sycl_v3(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
         #if GRID_STRIDED
         h.parallel_for<Dualise3_2<MaxDegree,T,K>>(sycl::nd_range(sycl::range{N*n_blocks_strided}, sycl::range{N}), [=](nd_item<1> nditem) {
         #else
-        h.parallel_for<Dualise3_2<MaxDegree,T,K>>(sycl::nd_range(sycl::range{N*capacity}, sycl::range{N}), [=](nd_item<1> nditem) {
+        h.parallel_for<Dualise3_2<MaxDegree,T,K>>(sycl::nd_range(sycl::range{WGS2*capacity}, sycl::range{WGS2}), [=](nd_item<1> nditem) {
         #endif
             auto cta = nditem.get_group();
             auto thid = nditem.get_local_linear_id();
@@ -587,7 +594,7 @@ void dualise_sycl_v3(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
             DeviceDualGraph<MaxDegree, node_t> FD(cached_neighbours.get_pointer(), cached_degrees.get_pointer());
 
             sycl::group_barrier(cta);
-
+            if (thid < N){
             auto u = arc_list_local[2*thid];
             auto v_idx = arc_list_local[2*thid + 1];
             auto v =        FD.dual_neighbours[u*MaxDegree + v_idx];
@@ -598,6 +605,7 @@ void dualise_sycl_v3(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
             auto edge_b = FD.get_cannonical_triangle_arc(v, u, uv_prev); cubic_neighbours_dev[isomer_idx*N*3 + thid*3 + 0] = triangle_numbers_local[edge_b[0]*MaxDegree + FD.dedge_ix(edge_b[0], edge_b[1])];
             auto edge_c = FD.get_cannonical_triangle_arc(w, v); cubic_neighbours_dev[isomer_idx*N*3 + thid*3 + 1] = triangle_numbers_local[edge_c[0]*MaxDegree + FD.dedge_ix(edge_c[0], edge_c[1])];
             auto edge_d = FD.get_cannonical_triangle_arc(u, w, uw_next); cubic_neighbours_dev[isomer_idx*N*3 + thid*3 + 2] = triangle_numbers_local[edge_d[0]*MaxDegree + FD.dedge_ix(edge_d[0], edge_d[1])];
+            }
 
             #if GRID_STRIDED
             }
