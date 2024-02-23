@@ -114,10 +114,10 @@ def plot_kernel_cpu_benchmarks():
   N, T, TSD = read_csv(fname_omp + "tp.csv")
   if N is not None:
   
-    ax[0].fill_between(N, (T - TSD*2), (T+TSD*2), color='k', alpha=0.1, label=r"2$\sigma$")
-    ax[0].plot(N, T, f'{Markers[-1]}:', ms=MS[-1], color=CD["OMP_TP"], label=KName + r"OpenMP [CPU]" + " Task-Parallel")
-    #ax[0].fill_between(N, (T - TSD*2) / N, (T+TSD*2) / N, color='k', alpha=0.1, label=r"2$\sigma$") 
-    #ax[0].plot(N, T / N, f'{Markers[-1]}:', ms=MS[-1], color=CD["OMP_TP"], label= r"OpenMP [CPU]" + " Task-Parallel")
+    #ax[0].fill_between(N, (T - TSD*2), (T+TSD*2), color='k', alpha=0.1, label=r"2$\sigma$")
+    #ax[0].plot(N, T, f'{Markers[-1]}:', ms=MS[-1], color=CD["OMP_TP"], label=KName + r"OpenMP [CPU]" + " Task-Parallel")
+    ax[0].fill_between(N, (T - TSD*2) / N, (T+TSD*2) / N, color='k', alpha=0.1, label=r"2$\sigma$") 
+    ax[0].plot(N, T / N, f'{Markers[-1]}:', ms=MS[-1], color=CD["OMP_TP"], label= r"OpenMP [CPU]" + " Task-Parallel")
 
   N, T, TSD = read_csv(fname_omp + "tp_scaling.csv")
   if N is not None:
