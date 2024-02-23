@@ -2,6 +2,7 @@
 #include <vector>
 #include <iostream>
 typedef std::pair<uint16_t,uint16_t> arc_t;
+#define mod(i,n) i + ((i < 0) - (i >= n)) * n
 
 template void dualise_omp_shared<6> (IsomerBatch<float,uint16_t>& B);
 template void dualise_omp_task<6>   (IsomerBatch<float,uint16_t>& B);
@@ -16,28 +17,33 @@ struct GraphWrapper{
     K dedge_ix(const K u, const K v) const{
         for (K j = 0; j < degrees[u]; j++){
             if (neighbours[u*MaxDegree + j] == v) return j;
-            if(j == degrees[u] - 1) exit(1);
+            if(j == degrees[u] - 1) abort();
         }
-        return 0; //Should never get here.
+        return -1; //Should never get here.
+    }
+
+    K get_node(const K u, const int idx) const{
+        return neighbours[u*MaxDegree + mod(idx, degrees[u])];
     }
 
     K next(const K u, const K v) const{
         K j = dedge_ix(u,v);
-        return neighbours[u*MaxDegree + ((j+1)%degrees[u])];
+        return get_node(u, j+1);
     }
 
     K prev(const K u, const K v) const{
         K j = dedge_ix(u,v);
-        return neighbours[u*MaxDegree + ((j-1+degrees[u])%degrees[u])];
+        return get_node(u, j-1);
     }
 
     arc_t canon_arc(const K u, const K v) const{
-        arc_t edge = {u,v};
         K w = next(u,v);
-        if (v < u && v < w) return {v,w};
-        if (w < u && w < v) return {w,u};
-        return edge;
+        return (u < v) ? ((u < w) ? arc_t{u, v} : arc_t{w, u}) : ((v < w) ? arc_t{v, w} : arc_t{w, u});
     }
+    //Assumes that the triangle is directed u -> v -> w
+    arc_t canon_arc(const K u, const K v, const K w) const{
+        return (u < v) ? ((u < w) ? arc_t{u, v} : arc_t{w, u}) : ((v < w) ? arc_t{v, w} : arc_t{w, u});
+    }    
 
 };
 template<int MaxDegree, typename T, typename K>
@@ -121,21 +127,25 @@ void dualise_omp_task(IsomerBatch<T,K>& B){
         uint16_t accumulator = 0;
         for (size_t j = 0; j < Nf; ++j){
             for (size_t k = 0; k < G.degrees[j]; ++k){
-                arc_t carc = G.canon_arc(j, G.neighbours[j*MaxDegree + k]);
+                arc_t carc = G.canon_arc(j, G.neighbours[j*MaxDegree + k], G.get_node(j, k+1));
                 if(carc.first == j){
                     triangle_numbers[j*MaxDegree + k] = accumulator;
-                    triangle_arcs[accumulator] = {j,carc.second};
+                    triangle_arcs[accumulator] = {j,k};
                     accumulator++;
                 }
             }
         }
         for (int j = 0; j < N; j++){
             uint16_t u = triangle_arcs[j].first;
-            uint16_t v = triangle_arcs[j].second;
-            uint16_t w = G.next(u,v);
-            arc_t arc_a = G.canon_arc(v,u);
+            uint16_t v_idx = triangle_arcs[j].second;
+            uint16_t v = G.neighbours[u*MaxDegree + v_idx];
+            uint16_t w = G.get_node(u, v_idx + 1);
+            uint16_t uv_prev = G.get_node(u, int(v_idx) - 1);
+            uint16_t uw_next = G.get_node(u, v_idx + 2);
+
+            arc_t arc_a = G.canon_arc(v,u,uv_prev);
             arc_t arc_b = G.canon_arc(w,v);
-            arc_t arc_c = G.canon_arc(u,w);
+            arc_t arc_c = G.canon_arc(u,w,uw_next);
             B.cubic_neighbours[i*N*3 + j*3 + 0] = triangle_numbers[arc_a.first*MaxDegree + G.dedge_ix(arc_a.first, arc_a.second)];
             B.cubic_neighbours[i*N*3 + j*3 + 1] = triangle_numbers[arc_b.first*MaxDegree + G.dedge_ix(arc_b.first, arc_b.second)];
             B.cubic_neighbours[i*N*3 + j*3 + 2] = triangle_numbers[arc_c.first*MaxDegree + G.dedge_ix(arc_c.first, arc_c.second)];
