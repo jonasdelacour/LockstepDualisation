@@ -111,6 +111,20 @@ def plot_kernel_cpu_benchmarks():
   print(f"Plotting batch size benchmark from {relpath(fname_multi_gpu_dual + '1.csv',cwd)} to {relpath(path,cwd)}/figures/kernel_benchmark.pdf")
   MS = MarkerScales * rc["lines.markersize"]
   fig, ax = plt.subplots(figsize=(15,15), nrows=2, sharex=False, dpi=200)
+  
+
+  for i in range(1,5):
+    fname = fname_one_cpu + str(i) + ".csv"
+    N, T, TSD = read_csv(fname)
+    if N is None: continue
+    ax[0].fill_between(N, (T - TSD*2) / N, (T+TSD*2) / N, color='k', alpha=0.1)
+    ax[0].plot(N, T / N, f'{Markers[i-1]}:', ms=MS[i-1], color=CD[f"CPU_V" + str(i)], label=KName + f" [CPU] V" + str(i))
+    _, T, TSD = read_csv(fname_one_cpu + str(i) + "_scaling.csv")
+    Ncores = range(1,T.shape[0]+1)
+    if N is None: continue
+    ax[1].fill_between(Ncores, T[0]/(T - TSD*2), T[0]/(T+TSD*2), color='k', alpha=0.1)
+    ax[1].plot(Ncores, T[0]/T, f'{Markers[i-1]}:', ms=MS[i-1], color=CD[f"CPU_V" + str(i)], label=KName + f" [CPU] V" + str(i))
+
   N, T, TSD = read_csv(fname_omp + "tp.csv")
   if N is not None:
   
@@ -125,20 +139,6 @@ def plot_kernel_cpu_benchmarks():
     ax[1].plot(Ncores, Ncores, color="r", ls='--', label= r"Linear Scaling" )
     ax[1].fill_between(Ncores, T[0]/(T - TSD*2), T[0]/(T+TSD*2), color='k', alpha=0.1, label=r"2$\sigma$")
     ax[1].plot(Ncores, T[0]/T, f'{Markers[-1]}:', ms=MS[-1], color=CD["OMP_TP"], label= r"OpenMP [CPU] Task-Parallel")
-  
-
-  for i in [1,2,3,4]:
-    fname = fname_one_cpu + str(i) + ".csv"
-    N, T, TSD = read_csv(fname)
-    if N is None: continue
-    ax[0].fill_between(N, (T - TSD*2) / N, (T+TSD*2) / N, color='k', alpha=0.1)
-    ax[0].plot(N, T / N, f'{Markers[i-1]}:', ms=MS[i-1], color=CD[f"CPU_V" + str(i)], label=KName + f" [CPU] V" + str(i))
-    _, T, TSD = read_csv(fname_one_cpu + str(i) + "_scaling.csv")
-    Ncores = range(1,T.shape[0]+1)
-    if N is None: continue
-    ax[1].fill_between(Ncores, T[0]/(T - TSD*2), T[0]/(T+TSD*2), color='k', alpha=0.1)
-    ax[1].plot(Ncores, T[0]/T, f'{Markers[i-1]}:', ms=MS[i-1], color=CD[f"CPU_V" + str(i)], label=KName + f" [CPU] V" + str(i))
-
 
   ax[0].set_ylim(0,)
   ax[0].set_xlabel(r"Cubic Graph Size [\# Vertices]")
@@ -443,7 +443,37 @@ def plot_speedup():
   ax.set_xlabel(r"Isomerspace $C_N$")
   plt.savefig(path + f"figures/speedup.{save_format}", bbox_inches='tight')
 
+def compute_numbers_for_paper():
+  print("Computing numbers for paper")
+  N, TB, TSD_B = read_csv(fname_base)
+  N, T_GPU, TSD_GPU = read_csv(fname_multi_gpu_dual + "1.csv")
+  N, TW, TSD_W = read_csv(fname_multi_gpu_weak)
+  N1, T1, TSD1 = read_csv(fname_one_gpu_dual + "1.csv")
+  NC200 = 214127742 #Number of C200 isomers
+  IX = np.where(N == 72)[0][0]
 
+  def std_div(a,b, a_std, b_std):
+      return a/b * np.sqrt((a_std/a)**2 + (b_std/b)**2)
+
+  print(f"Multi-GPU Dualization Performance:      {1e3*np.mean(T_GPU[IX:]/N[IX:]):.2f} +/- {1e3*np.mean(TSD_GPU[IX:]/N[IX:]):.2f} ps/Vertex  @ (72 - C200)")
+  print(f"Multi-GPU Dualization Max Performance:  {1e3*np.min(T_GPU[IX:]/N[IX:]):.2f} ps/Vertex  @ (72 - C200)")
+  print(f"Multi-GPU Dualization Min Performance:  {1e3*np.max(T_GPU[IX:]/N[IX:]):.2f} ps/Vertex  @ (72 - C200)")
+  print(f"Time to dualize C200:                   {1e-9*T_GPU[-1]*NC200:.2f} +/- {1e-9*TSD_GPU[-1]*NC200:.2f} s")
+  print(f"Multi GPU Strong Scaling:               {np.mean(T1[IX:]/T_GPU[IX:]):.2f} +/- {np.mean(std_div(T1,T_GPU, TSD1,TSD_GPU)[IX:]):.2f} @ (72 - C200)")
+  print(f"Multi GPU Speedup:                      {np.mean(TB[IX:]/TW[IX:]):.2f} +/- {np.mean(std_div(TB,TW, TSD_B,TSD_W)[IX:]):.2f} @ (72 - C200)")
+  print(f"Multi GPU Max Speedup:                  {np.min(TB[IX:]/TW[IX:]):.0f}X @ (72 - C200)")
+  print(f"Multi GPU Min Speedup:                  {np.max(TB[IX:]/TW[IX:]):.0f}X @ (72 - C200)")
+  print(f"Single GPU Speedup:                     {np.mean(TB[IX:]/T1[IX:]):.0f}X +/- {np.mean(std_div(TB,T1, TSD_B,TSD1)[IX:]):.2f} @ (72 - C200)")
+  print(f"Single GPU Max Speedup:                 {np.min(TB[IX:]/T1[IX:]):.0f}X @ (72 - C200)")
+  print(f"Single GPU Min Speedup:                 {np.max(TB[IX:]/T1[IX:]):.0f}X @ (72 - C200)")
+  #CPU 
+  N, T_CPU, TSD_CPU = read_csv(fname_one_cpu + "4.csv")
+  C100_IX= np.where(N == 100)[0][0]
+  print(f"Single-CPU Dualization Performance: {np.mean(T_CPU[C100_IX:]/N[C100_IX:]):.2f} +/- {np.mean(TSD_CPU[C100_IX:]/N[C100_IX:]):.2f} ps/Vertex  @ (C100 - C200)")
+  #print(f"Multi-GPU Dualization Performance: {T_GPU[C96_IX]/96:.2f} +/- {TSD_GPU[C96_IX]/96:.2f} ns/Vertex  @ (C96 - C200)")
+
+
+compute_numbers_for_paper()
 plot_kernel_cpu_benchmarks() #Can't use large markers for this plot, since data points are too close together
 rc["lines.markersize"] = 8
 plot_batch_size()
@@ -458,6 +488,5 @@ plot_pipeline(normalize=False)
 plot_lockstep_pipeline(normalize=True)
 plot_lockstep_pipeline(normalize=False)
 plot_lockstep_pipeline(normalize=False, log=True)
-
 
 
