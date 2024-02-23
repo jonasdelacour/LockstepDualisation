@@ -107,62 +107,83 @@ KName = r"SYCL "
 
 os.makedirs(f"{path}/figures",exist_ok=True)
 
-def plot_kernel_benchmarks(device = "gpu"):
-  device = device.upper()
+def plot_kernel_cpu_benchmarks():
+  print(f"Plotting batch size benchmark from {relpath(fname_multi_gpu_dual + '1.csv',cwd)} to {relpath(path,cwd)}/figures/kernel_benchmark.pdf")
+  MS = MarkerScales * rc["lines.markersize"]
+  fig, ax = plt.subplots(figsize=(15,15), nrows=2, sharex=False, dpi=200)
+  N, T, TSD = read_csv(fname_omp + "tp.csv")
+  if N is not None:
+  
+    ax[0].fill_between(N, (T - TSD*2), (T+TSD*2), color='k', alpha=0.1, label=r"2$\sigma$")
+    ax[0].plot(N, T, f'{Markers[-1]}:', ms=MS[-1], color=CD["OMP_TP"], label=KName + r"OpenMP [CPU]" + " Task-Parallel")
+    #ax[0].fill_between(N, (T - TSD*2) / N, (T+TSD*2) / N, color='k', alpha=0.1, label=r"2$\sigma$") 
+    #ax[0].plot(N, T / N, f'{Markers[-1]}:', ms=MS[-1], color=CD["OMP_TP"], label= r"OpenMP [CPU]" + " Task-Parallel")
+
+  N, T, TSD = read_csv(fname_omp + "tp_scaling.csv")
+  if N is not None:
+    Ncores = range(1,T.shape[0]+1)
+    ax[1].plot(Ncores, Ncores, color="r", ls='--', label= r"Linear Scaling" )
+    ax[1].fill_between(Ncores, T[0]/(T - TSD*2), T[0]/(T+TSD*2), color='k', alpha=0.1, label=r"2$\sigma$")
+    ax[1].plot(Ncores, T[0]/T, f'{Markers[-1]}:', ms=MS[-1], color=CD["OMP_TP"], label= r"OpenMP [CPU] Task-Parallel")
+  
+
+  for i in [1,2,3,4]:
+    fname = fname_one_cpu + str(i) + ".csv"
+    N, T, TSD = read_csv(fname)
+    if N is None: continue
+    ax[0].fill_between(N, (T - TSD*2) / N, (T+TSD*2) / N, color='k', alpha=0.1)
+    ax[0].plot(N, T / N, f'{Markers[i-1]}:', ms=MS[i-1], color=CD[f"CPU_V" + str(i)], label=KName + f" [CPU] V" + str(i))
+    _, T, TSD = read_csv(fname_one_cpu + str(i) + "_scaling.csv")
+    Ncores = range(1,T.shape[0]+1)
+    if N is None: continue
+    ax[1].fill_between(Ncores, T[0]/(T - TSD*2), T[0]/(T+TSD*2), color='k', alpha=0.1)
+    ax[1].plot(Ncores, T[0]/T, f'{Markers[i-1]}:', ms=MS[i-1], color=CD[f"CPU_V" + str(i)], label=KName + f" [CPU] V" + str(i))
+
+
+  ax[0].set_ylim(0,)
+  ax[0].set_xlabel(r"Cubic Graph Size [\# Vertices]")
+  ax[0].set_ylabel(r"Time / Vertex [ns]")
+  ax[1].set_ylim(None, ax[1].get_ylim()[1] * 1.15)
+  ax[1].legend(loc="upper left", ncol=2)
+  ax[1].set_ylabel(r"Speedup")
+  ax[1].xaxis.set_major_locator(MaxNLocator(integer=True))
+  ax[1].set_xticks(range(2,os.cpu_count()+1,2))
+  ax[1].set_xticklabels([f"{i}" for i in range(2,os.cpu_count()+1,2)])
+  ax[1].set_xlabel(r"Number of Threads")
+  plt.savefig(f"{path}/figures/kernel_benchmark_CPU.{save_format}", bbox_inches='tight')
+
+def plot_kernel_gpu_benchmarks():
   print(f"Plotting batch size benchmark from {relpath(fname_multi_gpu_dual + '1.csv',cwd)} to {relpath(path,cwd)}/figures/kernel_benchmark.pdf")
   MS = MarkerScales * rc["lines.markersize"]
   fig, ax = plt.subplots(figsize=(15,15), nrows=2, sharex=True, dpi=200)
-  if device == "CPU":
-    N, T, TSD = read_csv(fname_omp + "tp.csv")
-    if N is not None:
-      ax[0].fill_between(N, (T - TSD*2), (T+TSD*2), color='k', alpha=0.1, label=r"2$\sigma$")
-      ax[1].fill_between(N, (T - TSD*2) / N, (T+TSD*2) / N, color='k', alpha=0.1, label=r"2$\sigma$") 
-      ax[0].plot(N, T, f'{Markers[-1]}:', ms=MS[-1], color=CD["OMP_TP"], label=KName + r"OpenMP [CPU]" + " Task-Parallel")
-      ax[1].plot(N, T / N, f'{Markers[-1]}:', ms=MS[-1], color=CD["OMP_TP"], label=KName + r"OpenMP [CPU]" + " Task-Parallel")
-
-
+    
   for i in range(1,5):
-    fname = fname_one_cpu + str(i) + ".csv" if device == "CPU" else fname_multi_gpu_dual + str(i) + ".csv"
+    fname = fname_multi_gpu_dual + str(i) + ".csv"
     N, T, TSD = read_csv(fname)
     if N is None: continue
-    if i == 1 and device == "GPU":
+    if i == 1:
       ax[0].fill_between(N, (T - TSD*2), (T+TSD*2), color='k', alpha=0.1, label=r"2$\sigma$")
       ax[1].fill_between(N, (T - TSD*2)*1e3 / N, (T+TSD*2)*1e3 / N, color='k', alpha=0.1, label=r"2$\sigma$") 
     else:
       ax[0].fill_between(N, (T - TSD*2), (T+TSD*2), color='k', alpha=0.1)
-      if device == "GPU":
-        ax[1].fill_between(N, (T - TSD*2)*1e3 / N, (T+TSD*2)*1e3 / N, color='k', alpha=0.1)
-      else:
-        ax[1].fill_between(N, (T - TSD*2) / N, (T+TSD*2) / N, color='k', alpha=0.1)
-    ax[0].plot(N, T, f'{Markers[i-1]}:', ms=MS[i-1], color=CD[f"{device}_V" + str(i)], label=KName + f" [{device}] V" + str(i))
-    if device == "GPU":
-      ax[1].plot(N, T*1e3 / N, f'{Markers[i-1]}:', ms=MS[i-1], color=CD[f"{device}_V" + str(i)], label=KName + f" [{device}] V" + str(i))
-    else:
-      ax[1].plot(N, T / N, f'{Markers[i-1]}:', ms=MS[i-1], color=CD[f"{device}_V" + str(i)], label=KName + f" [{device}] V" + str(i))
+      ax[1].fill_between(N, (T - TSD*2)*1e3 / N, (T+TSD*2)*1e3 / N, color='k', alpha=0.1)
+    ax[0].plot(N, T, f'{Markers[i-1]}:', ms=MS[i-1], color=CD[f"GPU_V" + str(i)], label=KName + f" [GPU] V" + str(i))
+    ax[1].plot(N, T*1e3 / N, f'{Markers[i-1]}:', ms=MS[i-1], color=CD[f"GPU_V" + str(i)], label=KName + f" [GPU] V" + str(i))
       
   ax[0].set_ylabel(r"Time / Graph [ns]")
-  if device == "GPU":
-    ax[0].set_ymargin(0.0)
-    ax[1].set_ymargin(0.0)
-    ax[0].vlines(96, ax[0].get_ylim()[0], ax[0].get_ylim()[1], color=CD["GPU_V4"], ls='--', label=r"Kernel 4 Saturation")
-    ax[0].vlines(188, ax[0].get_ylim()[0], ax[0].get_ylim()[1], color=CD["GPU_V1"], ls='-.', label=r"Kernel 1 Saturation")
-    ax[1].vlines(96, ax[1].get_ylim()[0], ax[1].get_ylim()[1], color=CD["GPU_V4"], ls='--', label=r"Kernel 4 Saturation")
-    ax[1].vlines(188, ax[1].get_ylim()[0], ax[1].get_ylim()[1], color=CD["GPU_V1"], ls='-.', label=r"Kernel 1 Saturation")
-  
+  ax[0].set_ymargin(0.0)
+  ax[1].set_ymargin(0.0)
+  ax[0].vlines(96, ax[0].get_ylim()[0], ax[0].get_ylim()[1], color=CD["GPU_V4"], ls='--', label=r"Kernel 4 Saturation")
+  ax[0].vlines(188, ax[0].get_ylim()[0], ax[0].get_ylim()[1], color=CD["GPU_V1"], ls='-.', label=r"Kernel 1 Saturation")
+  ax[1].vlines(96, ax[1].get_ylim()[0], ax[1].get_ylim()[1], color=CD["GPU_V4"], ls='--', label=r"Kernel 4 Saturation")
+  ax[1].vlines(188, ax[1].get_ylim()[0], ax[1].get_ylim()[1], color=CD["GPU_V1"], ls='-.', label=r"Kernel 1 Saturation")
+
   ax[0].legend(loc="upper left")
-  if device == "GPU" : 
-    ax[1].legend(bbox_to_anchor=(0.5, 0.9))
-    ax[1].set_ylabel(r"Time / Vertex [ps]")
-  else:
-    ax[0].set_ylim(0,)
-    ax[1].set_ylim(None, ax[1].get_ylim()[1] * 1.15)
-    ax[1].legend(loc="upper left", ncol=2)
-    ax[1].set_ylabel(r"Time / Vertex [ns]")
+  ax[1].legend(bbox_to_anchor=(0.5, 0.9))
+  ax[1].set_ylabel(r"Time / Vertex [ps]")
+    
   ax[1].set_xlabel(r"Cubic Graph Size [\# Vertices]")
-  plt.savefig(f"{path}/figures/kernel_benchmark_{device}.{save_format}", bbox_inches='tight')
-
-
-
+  plt.savefig(f"{path}/figures/kernel_benchmark_GPU.{save_format}", bbox_inches='tight')
 
 
 ## Batch size
@@ -423,13 +444,13 @@ def plot_speedup():
   plt.savefig(path + f"figures/speedup.{save_format}", bbox_inches='tight')
 
 
-plot_kernel_benchmarks("cpu") #Can't use large markers for this plot, since data points are too close together
+plot_kernel_cpu_benchmarks() #Can't use large markers for this plot, since data points are too close together
 rc["lines.markersize"] = 8
 plot_batch_size()
 plot_baseline()
 plot_weak_scaling()
 plot_speedup()
-plot_kernel_benchmarks("gpu")
+plot_kernel_gpu_benchmarks()
 set_fontsizes(40) #Single figure plots need larger fonts compared to multi-figure plots
 rc["lines.markersize"] = 10
 plot_pipeline(normalize=True)
