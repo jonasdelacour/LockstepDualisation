@@ -23,4 +23,6 @@ template <typename T, typename K>
 IsomerBatch<T,K>::IsomerBatch() : IsomerBatch(0, 0) {}
 
 template IsomerBatch<float, uint16_t>::IsomerBatch(size_t n_atoms, size_t n_isomers);
+template IsomerBatch<float, uint8_t>::IsomerBatch(size_t n_atoms, size_t n_isomers);
+template IsomerBatch<float, uint8_t>::IsomerBatch();
 template IsomerBatch<float, uint16_t>::IsomerBatch();

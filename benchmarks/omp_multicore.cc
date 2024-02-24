@@ -40,7 +40,6 @@ int main(int argc, char** argv){
     std::chrono::steady_clock::time_point start;
     for (size_t i = 0; i < N_runs + N_warmup; i++)
     {
-
         if(i >= N_warmup) start = steady_clock::now();
 
         switch (version)

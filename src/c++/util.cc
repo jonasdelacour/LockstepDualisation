@@ -22,6 +22,7 @@ template void remove_outliers(std::vector<float>& data, int n_sigma);
 template void remove_outliers(std::vector<double>& data, int n_sigma);
 
 template void fill(IsomerBatch<float,uint16_t>& B, int set_div, int offset);
+template void fill(IsomerBatch<float,uint8_t>& B, int set_div, int offset);
 template void fill(IsomerBatch<double,uint16_t>& B, int set_div, int offset);
 
 template void bucky_fill(IsomerBatch<float,uint16_t>& B, int ntasks, int mytask_id);
@@ -97,17 +98,17 @@ void fill(IsomerBatch<T,K>& B, int set_div, int offset) {
     throw std::runtime_error("Could not open "+path+" for reading.\n");
   
   size_t fsize = filesize(samples);                     //Get the size of the file in bytes.
-  size_t n_samples = fsize / (Nf * 6 * sizeof(K));   //All the graphs are fullerene graphs stored in 16bit unsigned integers.
+  size_t n_samples = fsize / (Nf * 6 * sizeof(uint16_t));   //All the graphs are fullerene graphs stored in 16bit unsigned integers.
 
-  std::vector<K> in_buffer(n_samples * Nf * 6);   //Allocate a buffer to store all the samples.
-  samples.read((char*)in_buffer.data(), n_samples*Nf*6*sizeof(K));         //Read all the samples into the buffer.
+  std::vector<uint16_t> in_buffer(n_samples * Nf * 6);   //Allocate a buffer to store all the samples.
+  samples.read((char*)in_buffer.data(), n_samples*Nf*6*sizeof(uint16_t));         //Read all the samples into the buffer.
 
   for(int i = 0; i < N_graphs; i++) {                  //Copy the first N_graphs samples into the batch.
     B.statuses[i] = IsomerStatus::NOT_CONVERGED;
     for(int j = 0; j < Nf; j++) {
       for(int k = 0; k < 6; k++) {
 	      (B.dual_neighbours).at(i*Nf*6 + j*6 + k) = in_buffer[(i%n_samples)*Nf*6 + j*6 + k];
-	      if(k==5) (B.face_degrees).at(i*Nf + j) = in_buffer[(i%n_samples)*Nf*6 + j*6 + k] == std::numeric_limits<K>::max() ? 5 : 6;
+	      if(k==5) (B.face_degrees).at(i*Nf + j) = in_buffer[(i%n_samples)*Nf*6 + j*6 + k] == std::numeric_limits<uint16_t>::max() ? 5 : 6;
       }
     }
   }
