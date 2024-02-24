@@ -8,8 +8,8 @@ Ngpu_runs = 20 #Set to 100 for more accurate results, much smaller standard devi
 Ncpu_runs = 20 #Set to 100 for more accurate results, much smaller standard deviation.
 Ncpu_warmup = 1 #Warmup caches and branch predictor.
 Ngpu_warmup = 1 #No branch prediction on GPU, but SYCL runtime incurs overhead the first time each kernel is run.
-N_warmup = { "cpu": 20, "gpu": 50 }
-N_runs = { "cpu": 30, "gpu": 10 }
+N_warmup = { "cpu": 20, "gpu": 60 }
+N_runs = { "cpu": 30, "gpu": 30 }
 #Change this number if the simulation is taking too long.
 #Setting this number to -1 will reduce the batch sizes by 1 power of 2 in the kernel dualisation benchmark.
 Bathcsize_Offset = { "cpu": -4, "gpu": 0 } 
