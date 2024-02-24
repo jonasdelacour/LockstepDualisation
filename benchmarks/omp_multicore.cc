@@ -57,7 +57,9 @@ int main(int argc, char** argv){
         if(i >= N_warmup) times[i-N_warmup] = duration<double,std::nano>(steady_clock::now() - start).count();
     }
 
-    remove_outliers(times);
+    remove_outliers(times,1);
+    remove_outliers(times,2);
+    remove_outliers(times,3);
 
     file
         << N << ","

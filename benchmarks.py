@@ -8,11 +8,11 @@ Ngpu_runs = 20 #Set to 100 for more accurate results, much smaller standard devi
 Ncpu_runs = 20 #Set to 100 for more accurate results, much smaller standard deviation.
 Ncpu_warmup = 1 #Warmup caches and branch predictor.
 Ngpu_warmup = 1 #No branch prediction on GPU, but SYCL runtime incurs overhead the first time each kernel is run.
-N_warmup = { "cpu": 5, "gpu": 50 }
-N_runs = { "cpu": 20, "gpu": 10 }
+N_warmup = { "cpu": 20, "gpu": 50 }
+N_runs = { "cpu": 30, "gpu": 10 }
 #Change this number if the simulation is taking too long.
 #Setting this number to -1 will reduce the batch sizes by 1 power of 2 in the kernel dualisation benchmark.
-Bathcsize_Offset = { "cpu": -5, "gpu": 0 } 
+Bathcsize_Offset = { "cpu": -4, "gpu": 0 } 
 
 
 #----------------- BENCHMARK DEFINITIONS --------------------
@@ -68,6 +68,11 @@ def source_and_get_environment(script_path, base_environment=None):
     proc = subprocess.Popen(command, stdout=subprocess.PIPE, env=base_environment)
     output, _ = proc.communicate()
     env = dict((line.split("=", 1) for line in output.decode().splitlines() if "=" in line))
+    env["OMP_PROC_BIND"] = "1"
+    env["OMP_NUM_THREADS"] = f"{max(os.cpu_count() - 2,1)}"
+    env["DPCPP_CPU_NUM_CUS"] = f"{max(os.cpu_count() - 2,1)}"
+    env["DPCPP_CPU_CU_AFFINITY"] = "spread"
+    env["DPCPP_CPU_PLACES"] = "cores"
     return env
 
 def reset_file(filename,header=""):
@@ -114,6 +119,25 @@ def bench_baseline():
     for i in range(20,201,2):
         os.system(f'{buildpath}benchmarks/baseline {i} {2**(8)} {N_runs["cpu"]} {N_warmup["cpu"]} 0 {path}/base.csv')
     
+def bench_dualize_cpu_scaling():
+    if not os.path.exists(f'{buildpath}benchmarks/sycl/dualisation'):
+        print("SYCL dualisation kernel not found. Skipping cpu scaling benchmark. Make sure your SYCL environment is set up correctly. Then run `make all` again.")
+        return
+    if not os.path.exists(f'{buildpath}benchmarks/omp_multicore'):
+        print("OpenMP kernel not found. Skipping OpenMP scaling benchmark")
+        return
+    for i in range(1,5):
+        reset_file(f'{path}/one_cpu_v{i}_scaling.csv')
+    reset_file(f'{path}/omp_multicore_tp_scaling.csv')
+    scale_range = range(1, os.cpu_count()+1)
+    for i in scale_range:
+        env["DPCPP_CPU_NUM_CUS"] = str(i) 
+        env["OMP_NUM_THREADS"] = str(i)
+        subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/omp_multicore {200} {2**(20+Bathcsize_Offset["cpu"])} {N_runs["cpu"]} {N_warmup["cpu"]} 1 {path}/omp_multicore_tp_scaling.csv'], env=env).wait()
+        for j in range(1,5):
+            subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation cpu {200} {2**(20+Bathcsize_Offset["cpu"])} {N_runs["cpu"]} {N_warmup["cpu"]} {j} 1 {path}/one_cpu_v{j}_scaling.csv'], env=env).wait()
+
+
 def bench_dualize(kernel_versions="all", devices="cpu"):
     if not os.path.exists(f'{buildpath}benchmarks/sycl/dualisation'):
         print("SYCL dualisation kernel not found. Skipping dualisation benchmark. Make sure your SYCL environment is set up correctly. Then run `make all` again.")
@@ -134,8 +158,6 @@ def bench_dualize(kernel_versions="all", devices="cpu"):
         reset_file(f'{path}/omp_multicore_tp.csv')
 
     for j in kernel_range:
-        if "cpu" in device_range:
-            reset_file(f'{path}/one_cpu_v{j}_scaling.csv')
         if "gpu" in device_range: 
             reset_file(f'{path}/multi_gpu_v{j}.csv')
         for device in device_range:
@@ -156,17 +178,8 @@ def bench_dualize(kernel_versions="all", devices="cpu"):
                 subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation {device} {i} {2**(20+Bathcsize_Offset[device])} {N_runs[device]} {N_warmup[device]} {j} 1 {path}/one_{device}_v{j}.csv'], env=env).wait()
     
     if "cpu" in device_range:
-        scale_range = range(1, os.cpu_count()+1)
-        reset_file(f'{path}/omp_multicore_tp_scaling.csv')
-        for i in scale_range:
-            env["DPCPP_CPU_NUM_CUS"] = str(i) 
-            env["OMP_NUM_THREADS"] = str(i)
-            subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/omp_multicore {196} {2**(20+Bathcsize_Offset["cpu"])} {N_runs["cpu"]} {N_warmup["cpu"]} 1 {path}/omp_multicore_tp_scaling.csv'], env=env).wait()
-            for j in kernel_range:
-                subprocess.Popen(['/bin/bash', '-c', f'{buildpath}benchmarks/sycl/dualisation cpu {196} {2**(20+Bathcsize_Offset["cpu"])} {N_runs["cpu"]} {N_warmup["cpu"]} {j} 1 {path}/one_cpu_v{j}_scaling.csv'], env=env).wait()
-
-
-
+        bench_dualize_cpu_scaling()
+        
 
 def bench_generate():
     reset_file(f"{path}/buckybench.csv", header="N,BS,T_gen,TSD_gen")
@@ -205,6 +218,7 @@ tasks = {'batchsize':   bench_batchsize,
          'baseline':    bench_baseline,
          'dualize_cpu': bench_dualize_cpu,
          'dualize_gpu': bench_dualize_gpu,
+         'dualize_cpu_scaling': bench_dualize_cpu_scaling,
          'generate':    bench_generate,
          'pipeline':    bench_pipeline,
          'validate':    validate_kernel};
