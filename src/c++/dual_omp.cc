@@ -143,9 +143,13 @@ void dualise_omp_task(IsomerBatch<T,K>& B){
         }
         for (int j = 0; j < N; j++){
             K u = triangle_arcs[j].first;
-            K v = triangle_arcs[j].second;
-            K w = G.next(u,v);
-            arc_t arc_a = G.canon_arc(v,u);
+            int v_idx = triangle_arcs[j].second;
+            K v = G.neighbours[u*MaxDegree + v_idx];
+            K w = G.get_node(u, v_idx + 1);
+            K uv_prev = G.get_node(u, v_idx - 1);
+            K uw_next = G.get_node(u, v_idx + 2);
+
+            arc_t arc_a = G.canon_arc(v,u,uv_prev);
             arc_t arc_b = G.canon_arc(w,v);
             arc_t arc_c = G.canon_arc(u,w,uw_next);
             B.cubic_neighbours[i*N*3 + j*3 + 0] = triangle_numbers[arc_a.first*MaxDegree + G.dedge_ix(arc_a.first, arc_a.second)];
