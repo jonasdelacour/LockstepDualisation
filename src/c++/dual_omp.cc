@@ -1,14 +1,18 @@
 #include "cpp_kernels.h"
 #include <vector>
 #include <iostream>
+#include <limits>
 typedef std::pair<uint16_t,uint16_t> arc_t;
 #define mod(i,n) i + ((i < 0) - (i >= n)) * n
 
 template void dualise_omp_shared<6> (IsomerBatch<float,uint16_t>& B);
+template void dualise_omp_shared<6> (IsomerBatch<float,uint8_t>& B);
 template void dualise_omp_task<6>   (IsomerBatch<float,uint16_t>& B);
+template void dualise_omp_task<6>   (IsomerBatch<float,uint8_t>& B);
 
 template <int MaxDegree, typename K>
 struct GraphWrapper{
+    typedef std::pair<K,K> arc_t;   
     const K* neighbours;
     const K* degrees;
 
@@ -48,13 +52,14 @@ struct GraphWrapper{
 };
 template<int MaxDegree, typename T, typename K>
 void dualise_omp_shared(IsomerBatch<T,K>& B){
+    typedef std::pair<K,K> arc_t;
     auto N = B.n_atoms;
     auto Nf = B.n_faces;
     auto N_graphs = B.m_capacity;
-    std::vector<uint16_t> triangle_numbers(MaxDegree*Nf, UINT16_MAX);
-    std::vector<uint16_t> canon_arcs(MaxDegree*Nf, UINT16_MAX);
-    std::vector<uint16_t> n_triangles(Nf, 0); //Number of triangles that each face owns.
-    std::vector<uint16_t> scan_array(Nf, 0); //Scan array for prefix sum.
+    std::vector<K> triangle_numbers(MaxDegree*Nf, std::numeric_limits<K>::max());
+    std::vector<K> canon_arcs(MaxDegree*Nf, std::numeric_limits<K>::max());
+    std::vector<K> n_triangles(Nf, 0); //Number of triangles that each face owns.
+    std::vector<K> scan_array(Nf, 0); //Scan array for prefix sum.
     std::vector<arc_t> triangle_arcs(N);
     #pragma omp parallel
     {
@@ -69,13 +74,13 @@ void dualise_omp_shared(IsomerBatch<T,K>& B){
                         canon_arcs[j*MaxDegree + k] = carc.second;
                         n_triangles[j]++;
                     } else {
-                        canon_arcs[j*MaxDegree + k] = UINT16_MAX;
+                        canon_arcs[j*MaxDegree + k] = std::numeric_limits<K>::max();
                     }
                 }
             }
             #pragma omp barrier
 
-            uint16_t accumulator = 0;
+            K accumulator = 0;
 	    //            #pragma omp simd reduction(inscan,+:accumulator)
             for (size_t j = 0; j < Nf; ++j){
                 scan_array[j] = accumulator;
@@ -88,7 +93,7 @@ void dualise_omp_shared(IsomerBatch<T,K>& B){
                 uint8_t n = 0;
                 //#pragma omp simd
                 for (size_t k = 0; k < G.degrees[j]; ++k){
-                    if (canon_arcs[j*MaxDegree + k] != UINT16_MAX){
+                    if (canon_arcs[j*MaxDegree + k] != std::numeric_limits<K>::max()){
                         triangle_numbers[j*MaxDegree + k] = scan_array[j] + n;
                         n++;
                         triangle_arcs[triangle_numbers[j*MaxDegree + k]] = {j,canon_arcs[j*MaxDegree + k]};
@@ -98,9 +103,9 @@ void dualise_omp_shared(IsomerBatch<T,K>& B){
             #pragma omp barrier
             #pragma omp for schedule(auto)
             for (size_t j = 0; j < N; j++){
-                uint16_t u = triangle_arcs[j].first;
-                uint16_t v = triangle_arcs[j].second;
-                uint16_t w = G.next(u,v);
+                K u = triangle_arcs[j].first;
+                K v = triangle_arcs[j].second;
+                K w = G.next(u,v);
                 arc_t arc_a = G.canon_arc(v,u);
                 arc_t arc_b = G.canon_arc(w,v);
                 arc_t arc_c = G.canon_arc(u,w);
@@ -114,20 +119,21 @@ void dualise_omp_shared(IsomerBatch<T,K>& B){
 
 template<int MaxDegree, typename T, typename K>
 void dualise_omp_task(IsomerBatch<T,K>& B){
+    typedef std::pair<K,K> arc_t;
     #pragma omp parallel 
     {
     auto N = B.n_atoms;
     auto Nf = B.n_faces;
     auto N_graphs = B.m_capacity;
-    std::vector<uint16_t> triangle_numbers(MaxDegree*Nf, UINT16_MAX);
+    std::vector<K> triangle_numbers(MaxDegree*Nf, std::numeric_limits<K>::max());
     std::vector<arc_t> triangle_arcs(N);
     #pragma omp for schedule(auto)
     for (size_t i = 0; i < N_graphs; ++i){
         GraphWrapper<6, K> G(B.dual_neighbours.data() + i*Nf*MaxDegree, B.face_degrees.data() + i*Nf);
-        uint16_t accumulator = 0;
-        for (size_t j = 0; j < Nf; ++j){
-            for (size_t k = 0; k < G.degrees[j]; ++k){
-                arc_t carc = G.canon_arc(j, G.neighbours[j*MaxDegree + k], G.get_node(j, k+1));
+        K accumulator = 0;
+        for (int j = 0; j < Nf; ++j){
+            for (int k = 0; k < G.degrees[j]; ++k){
+                arc_t carc = G.canon_arc(j, G.neighbours[j*MaxDegree + k]);
                 if(carc.first == j){
                     triangle_numbers[j*MaxDegree + k] = accumulator;
                     triangle_arcs[accumulator] = {j,k};
@@ -136,12 +142,12 @@ void dualise_omp_task(IsomerBatch<T,K>& B){
             }
         }
         for (int j = 0; j < N; j++){
-            uint16_t u = triangle_arcs[j].first;
-            uint16_t v_idx = triangle_arcs[j].second;
-            uint16_t v = G.neighbours[u*MaxDegree + v_idx];
-            uint16_t w = G.get_node(u, v_idx + 1);
-            uint16_t uv_prev = G.get_node(u, int(v_idx) - 1);
-            uint16_t uw_next = G.get_node(u, v_idx + 2);
+            K u = triangle_arcs[j].first;
+            int v_idx = triangle_arcs[j].second;
+            K v = G.neighbours[u*MaxDegree + v_idx];
+            K w = G.get_node(u, v_idx + 1);
+            K uv_prev = G.get_node(u, v_idx - 1);
+            K uw_next = G.get_node(u, v_idx + 2);
 
             arc_t arc_a = G.canon_arc(v,u,uv_prev);
             arc_t arc_b = G.canon_arc(w,v);
@@ -150,7 +156,6 @@ void dualise_omp_task(IsomerBatch<T,K>& B){
             B.cubic_neighbours[i*N*3 + j*3 + 1] = triangle_numbers[arc_b.first*MaxDegree + G.dedge_ix(arc_b.first, arc_b.second)];
             B.cubic_neighbours[i*N*3 + j*3 + 2] = triangle_numbers[arc_c.first*MaxDegree + G.dedge_ix(arc_c.first, arc_c.second)];
         }
-
     }   
     }
          
