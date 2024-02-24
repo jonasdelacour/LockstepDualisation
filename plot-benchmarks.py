@@ -140,9 +140,13 @@ def plot_kernel_cpu_benchmarks():
     ax[1].plot(Ncores, T[0]/T, f'{Markers[-1]}:', ms=MS[-1], color=CD["OMP_TP"], label= r"OpenMP [CPU] Task-Parallel")
 
   ax[0].set_ylim(0,)
+
+  ax[0].set_yticks(ax[0].get_yticks()[:-1] + 1)
   ax[0].set_xlabel(r"Cubic Graph Size [\# Vertices]")
   ax[0].set_ylabel(r"Time / Vertex [ns]")
-  ax[1].set_ylim(None, ax[1].get_ylim()[1] * 1.15)
+  ax[1].set_ylim(1,32)
+  ax[1].set_yticks(range(2,os.cpu_count()+1,2))
+  ax[1].set_ylabel([f"{i}" for i in range(2,os.cpu_count()+1,2)])
   ax[1].legend(loc="upper left", ncol=2)
   ax[1].set_ylabel(r"Speedup")
   ax[1].xaxis.set_major_locator(MaxNLocator(integer=True))
@@ -170,8 +174,9 @@ def plot_kernel_gpu_benchmarks():
     ax[1].plot(N, T*1e3 / N, f'{Markers[i-1]}:', ms=MS[i-1], color=CD[f"GPU_V" + str(i)], label=KName + f" [GPU] V" + str(i))
       
   ax[0].set_ylabel(r"Time / Graph [ns]")
-  ax[0].set_ymargin(0.0)
-  ax[1].set_ymargin(0.0)
+  ax[0].set_ylim(ax[0].get_ylim()[0]*0.95, ax[0].get_ylim()[1]*1.05)
+  ax[1].set_ylim(ax[1].get_ylim()[0]*0.95, ax[1].get_ylim()[1]*1.05)
+
   ax[0].vlines(96, ax[0].get_ylim()[0], ax[0].get_ylim()[1], color=CD["GPU_V4"], ls='--', label=r"Kernel 4 Saturation")
   ax[0].vlines(188, ax[0].get_ylim()[0], ax[0].get_ylim()[1], color=CD["GPU_V1"], ls='-.', label=r"Kernel 1 Saturation")
   ax[1].vlines(96, ax[1].get_ylim()[0], ax[1].get_ylim()[1], color=CD["GPU_V4"], ls='--', label=r"Kernel 4 Saturation")
@@ -464,7 +469,8 @@ def compute_numbers_for_paper():
       ["Multi-GPU Dualization Max Performance", f"{1e3*np.min(T_GPU[IX:]/N[IX:]):.2f}", "ps / vertex  @ [C72 - C200]"],
       ["Multi-GPU Dualization Min Performance", f"{1e3*np.max(T_GPU[IX:]/N[IX:]):.2f}", "ps / vertex  @ [C72 - C200]"],
       ["Time to dualize C200", f"{1e-9*T_GPU[-1]*NC200:.2f} +/- {1e-9*TSD_GPU[-1]*NC200:.2f}", "s"],
-      ["Multi GPU Strong Scaling", f"{np.mean(T1[IX:]/T_GPU[IX:]):.2f} +/- {np.mean(std_div(T1,T_GPU, TSD1,TSD_GPU)[IX:]):.2f}", "@ [C72 - C200]"],
+      ["Multi GPU Strong Scaling", f"{np.mean(T1[:]/T_GPU[:]):.2f} +/- {np.mean(std_div(T1,T_GPU, TSD1,TSD_GPU)[:]):.2f}", "@ [C72 - C200]"],
+      ["Multi GPU Weak Scaling", f"{np.mean(T1[:]/TW[:]):.2f} +/- {np.mean(std_div(T1,TW, TSD1,TSD_W)[:]):.2f}", "@ [C72 - C200]"],
       ["Multi GPU Speedup", f"{np.mean(TB[IX:]/TW[IX:]):.2f} +/- {np.mean(std_div(TB,TW, TSD_B,TSD_W)[IX:]):.2f}", "@ [C72 - C200]"],
       ["Multi GPU Max Speedup", f"{np.min(TB[IX:]/TW[IX:]):.0f}", "X @ [C72 - C200]"],
       ["Multi GPU Min Speedup", f"{np.max(TB[IX:]/TW[IX:]):.0f}", "X @ [C72 - C200]"],
