@@ -41,8 +41,8 @@ int main(int argc, char** argv) {
       fprintf(stderr, "Syntax: %s <cpu|gpu> [N:200] [N_graphs:1000000] [N_runs:10] [N_warmup:1] [version:0] [filename:multi_gpu.csv]\n",argv[0]);
       return -1;
     }
-    if(argc >6 && (stoi(argv[6]) < 0 || stoi(argv[6]) > 5)){
-      fprintf(stderr, "Invalid kernel version %d, must be between 1 and 5.\n", stoi(argv[6]));
+    if(argc >6 && (stoi(argv[6]) < 0 || stoi(argv[6]) > 4)){
+      fprintf(stderr, "Invalid kernel version %d, must be between 1 and 4.\n", stoi(argv[6]));
       return -1;
     }
     string device_type = argv[1];
@@ -150,7 +150,9 @@ int main(int argc, char** argv) {
         }
     }
 
-    remove_outliers(times); //Removes data points that are more than 2 standard deviations from the mean. If there are less than 3 data points, this does nothing.
+    remove_outliers(times, 1); //Removes data points that are more than 1 standard deviation from the mean. If there are less than 3 data points, this does nothing.
+    remove_outliers(times, 2);
+    remove_outliers(times, 2);
 
     file
         << N << ","
