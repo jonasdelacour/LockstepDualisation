@@ -271,14 +271,14 @@ void dualise_sycl_v1(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
             cta.async_work_group_copy(cached_degrees.get_pointer(), face_degrees_dev.get_pointer() + bid*Nf, Nf);
             
             DeviceDualGraph<MaxDegree, node_t> FD(cached_neighbours.get_pointer(), cached_degrees.get_pointer());
-            node_t cannon_arcs[MaxDegree]; for(size_t i=0;i<MaxDegree;i++) cannon_arcs[i] = EMPTY_NODE(); // memset sets bytes, but node_t is multi-byte.
+            node_t cannon_ixs[MaxDegree];
             node_t rep_count  = 0;
             sycl::group_barrier(cta);     
             if (thid < Nf){
                 for (node_t i = 0; i < FD.face_degrees[thid]; i++){
                     node2 cannon_arc = FD.get_cannonical_triangle_arc(thid, FD.dual_neighbours[thid*MaxDegree + i], FD.get_node(thid, i+1));
                     if (cannon_arc[0] == thid){
-                        cannon_arcs[i] = cannon_arc[1];
+                        cannon_ixs[rep_count] = i;
                         rep_count++;
                     }
                 }
@@ -287,14 +287,10 @@ void dualise_sycl_v1(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
             node_t scan_result = exclusive_scan_over_group(cta, rep_count, plus<node_t>{});
 
             if (thid < Nf){
-                node_t arc_count = 0;
-                for (node_t i = 0; i < FD.face_degrees[thid]; i++){
-                    if(cannon_arcs[i] != EMPTY_NODE()){
-                        auto idx = scan_result + arc_count;
-                        triangle_numbers[thid*MaxDegree + i] = idx;
-                        arc_list[idx] = {node_t(thid), i};
-                        ++arc_count;
-                    }    
+                for (node_t ii = 0; ii < rep_count; ii++){
+                    auto idx = scan_result + ii;
+                    triangle_numbers[thid*MaxDegree + cannon_ixs[ii]] = idx;
+                    arc_list[idx] = {node_t(thid), cannon_ixs[ii]};
                 }
             }
             sycl::group_barrier(cta);
@@ -306,10 +302,11 @@ void dualise_sycl_v1(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
                 auto w =        FD.get_node(u, v_idx+1);
                 auto uw_next =  FD.get_node(u, v_idx+2);
 
-                auto edge_b = FD.get_cannonical_triangle_arc(v, u, uv_prev); cubic_neighbours_dev[isomer_idx*N*3 + tix*3 + 0] = triangle_numbers[edge_b[0]*MaxDegree + FD.dedge_ix(edge_b[0], edge_b[1])];
-                auto edge_c = FD.get_cannonical_triangle_arc(w, v); cubic_neighbours_dev[isomer_idx*N*3 + tix*3 + 1] = triangle_numbers[edge_c[0]*MaxDegree + FD.dedge_ix(edge_c[0], edge_c[1])];
-                auto edge_d = FD.get_cannonical_triangle_arc(u, w, uw_next); cubic_neighbours_dev[isomer_idx*N*3 + tix*3 + 2] = triangle_numbers[edge_d[0]*MaxDegree + FD.dedge_ix(edge_d[0], edge_d[1])];
+                auto edge_b = FD.get_cannonical_triangle_arc(v, u, uv_prev);    cubic_neighbours_dev[isomer_idx*N*3 + tix*3 + 0] = triangle_numbers[edge_b[0]*MaxDegree + FD.dedge_ix(edge_b[0], edge_b[1])];
+                auto edge_c = FD.get_cannonical_triangle_arc(w, v);             cubic_neighbours_dev[isomer_idx*N*3 + tix*3 + 1] = triangle_numbers[edge_c[0]*MaxDegree + FD.dedge_ix(edge_c[0], edge_c[1])];
+                auto edge_d = FD.get_cannonical_triangle_arc(u, w, uw_next);    cubic_neighbours_dev[isomer_idx*N*3 + tix*3 + 2] = triangle_numbers[edge_d[0]*MaxDegree + FD.dedge_ix(edge_d[0], edge_d[1])];
             }
+
             #if GRID_STRIDED
             }
             #endif
