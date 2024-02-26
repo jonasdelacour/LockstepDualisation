@@ -36,13 +36,12 @@ struct DeviceDualGraph{
     DeviceDualGraph(const K* dual_neighbours, const K* face_degrees) : dual_neighbours(dual_neighbours), face_degrees(face_degrees) {}
 
     K dedge_ix(const K u, const K v) const{
-        __builtin_assume(face_degrees[u] <= MaxDegree);
-        for (uint8_t j = 0; j < face_degrees[u]; j++){
-            if (dual_neighbours[u*MaxDegree + j] == v) return j;
+        K result;
+        #pragma unroll
+        for (int j = 0; j < MaxDegree; j++){
+            result = (dual_neighbours[u*MaxDegree + j] == v) ? j : result;
         }
-
-        assert(false);
-	    return 0;		// Make compiler happy
+	    return result;
     }
 
     K get_node(const K u, const int idx) const{
@@ -276,8 +275,7 @@ void dualise_sycl_v1(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
             sycl::group_barrier(cta);     
             if (thid < Nf){
                 for (node_t i = 0; i < FD.face_degrees[thid]; i++){
-                    node2 cannon_arc = FD.get_cannonical_triangle_arc(thid, FD.dual_neighbours[thid*MaxDegree + i], FD.get_node(thid, i+1));
-                    if (cannon_arc[0] == thid){
+                    if(thid < FD.dual_neighbours[thid*MaxDegree + i] && thid < FD.get_node(thid, i+1)){
                         cannon_ixs[rep_count] = i;
                         rep_count++;
                     }
