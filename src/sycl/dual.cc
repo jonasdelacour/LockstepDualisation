@@ -274,7 +274,7 @@ void dualise_sycl_v1(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
             node_t rep_count  = 0;
             sycl::group_barrier(cta);     
             if (thid < Nf){
-                for (node_t i = 0; i < FD.face_degrees[thid]; i++){
+                for (int i = 0; i < FD.face_degrees[thid]; i++){
                     if(thid < FD.dual_neighbours[thid*MaxDegree + i] && thid < FD.get_node(thid, i+1)){
                         cannon_ixs[rep_count] = i;
                         rep_count++;
@@ -285,7 +285,7 @@ void dualise_sycl_v1(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
             node_t scan_result = exclusive_scan_over_group(cta, rep_count, plus<node_t>{});
 
             if (thid < Nf){
-                for (node_t ii = 0; ii < rep_count; ii++){
+                for (int ii = 0; ii < rep_count; ii++){
                     auto idx = scan_result + ii;
                     triangle_numbers[thid*MaxDegree + cannon_ixs[ii]] = idx;
                     arc_list[idx] = {node_t(thid), cannon_ixs[ii]};
@@ -293,7 +293,7 @@ void dualise_sycl_v1(sycl::queue&Q, IsomerBatch<T,K>& batch, const LaunchPolicy 
             }
             sycl::group_barrier(cta);
 
-            for(auto tix = thid; tix < N; tix += lcm){
+            for(int tix = thid; tix < N; tix += lcm){
                 auto [u, v_idx] = arc_list[tix];
                 auto v =        FD.dual_neighbours[u*MaxDegree + v_idx];
                 auto uv_prev =  FD.get_node(u, int(v_idx)-1);
